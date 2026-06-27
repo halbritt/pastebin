@@ -1,0 +1,44 @@
+{{define "paste.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paste {{.Code}}</title>
+  <style>{{.Style}}</style>
+</head>
+<body>
+  <main class="shell">
+    <section class="workspace">
+      <header class="topbar">
+        <h1><a href="/">Pastebin</a></h1>
+        <a class="raw-link" href="{{.RawURL}}">Raw</a>
+      </header>
+
+      <dl class="metadata">
+        <div>
+          <dt>Created</dt>
+          <dd><time datetime="{{.CreatedAt}}">{{.CreatedLabel}}</time></dd>
+        </div>
+        <div>
+          <dt>Expires</dt>
+          <dd><time datetime="{{.ExpiresAt}}">{{.ExpiresLabel}}</time></dd>
+        </div>
+        <div>
+          <dt>Size</dt>
+          <dd>{{.SizeLabel}}</dd>
+        </div>
+      </dl>
+
+      <div class="actions">
+        <button type="button" data-copy-fetch="{{.RawPath}}">Copy raw text</button>
+        <button type="button" data-copy-value="{{.RawURL}}">Copy raw URL</button>
+      </div>
+
+      <pre id="paste-text" class="paste-text">{{.Content}}</pre>
+    </section>
+  </main>
+  <script>{{.Script}}</script>
+</body>
+</html>
+{{end}}

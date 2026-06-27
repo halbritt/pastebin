@@ -1,0 +1,52 @@
+{{define "home.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pastebin</title>
+  <style>{{.Style}}</style>
+</head>
+<body>
+  <main class="shell">
+    <section class="workspace">
+      <header class="topbar">
+        <h1>Pastebin</h1>
+      </header>
+
+      <form id="create-form" class="paste-form" method="post" action="/">
+        <label class="field-label" for="content">Paste</label>
+        <textarea id="content" name="content" spellcheck="false" required autofocus></textarea>
+
+        <div class="controls">
+          <label class="field-label" for="expires">Expires</label>
+          <select id="expires" name="expires">
+            {{range .Expires}}
+            <option value="{{.Value}}" {{if .Default}}selected{{end}}>{{.Label}}</option>
+            {{end}}
+          </select>
+          <button type="submit">Create</button>
+        </div>
+        <p id="create-error" class="error" role="alert" hidden></p>
+      </form>
+
+      <section id="receipt" class="receipt" aria-live="polite" hidden>
+        <h2>Created</h2>
+        <div class="url-row">
+          <label for="paste-url">Paste URL</label>
+          <input id="paste-url" type="text" readonly>
+          <button type="button" data-copy-input="paste-url">Copy</button>
+        </div>
+        <div class="url-row">
+          <label for="raw-url">Raw Paste URL</label>
+          <input id="raw-url" type="text" readonly>
+          <button type="button" data-copy-input="raw-url">Copy</button>
+        </div>
+        <a id="view-link" class="open-link" href="">Open paste</a>
+      </section>
+    </section>
+  </main>
+  <script>{{.Script}}</script>
+</body>
+</html>
+{{end}}

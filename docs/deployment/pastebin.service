@@ -1,0 +1,26 @@
+[Unit]
+Description=Pastebin private tailnet service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pastebin
+Group=pastebin
+EnvironmentFile=/etc/pastebin/pastebin.env
+WorkingDirectory=/var/lib/pastebin
+ExecStart=/usr/local/bin/pastebind
+Restart=on-failure
+RestartSec=2s
+StandardOutput=journal
+StandardError=journal
+StateDirectory=pastebin
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pastebin
+
+[Install]
+WantedBy=multi-user.target
