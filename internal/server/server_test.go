@@ -211,8 +211,8 @@ func TestRetrievalMapsExpiredAndUnknownPastes(t *testing.T) {
 	}
 }
 
-func TestPasteViewEscapesContentAndShowsMetadata(t *testing.T) {
-	content := []byte("<script>alert(\"x\")</script>")
+func TestPasteViewRendersMarkdownSafelyAndShowsMetadata(t *testing.T) {
+	content := []byte("# Heading\n\n- item\n\n<script>alert(\"x\")</script>\n\n[bad](javascript:alert(1))")
 	store := &recordingStore{
 		getFunc: func(code string, _ time.Time) (paste.Paste, error) {
 			return paste.Paste{
@@ -237,7 +237,10 @@ func TestPasteViewEscapesContentAndShowsMetadata(t *testing.T) {
 	if strings.Contains(body, `<script>alert("x")</script>`) {
 		t.Fatalf("body contains unescaped script: %s", body)
 	}
-	for _, want := range []string{"&lt;script&gt;", "Created", "Expires", "27 bytes", `href="https://paste.example.ts.net/raw/abc123"`, "Copy raw text", "Copy raw URL"} {
+	if strings.Contains(body, "javascript:alert") {
+		t.Fatalf("body contains unsafe link: %s", body)
+	}
+	for _, want := range []string{"<h1>Heading</h1>", "<li>item</li>", "Created", "Expires", "74 bytes", `href="https://paste.example.ts.net/raw/abc123"`, "Copy raw text", "Copy raw URL"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("body missing %q", want)
 		}

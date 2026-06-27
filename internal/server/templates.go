@@ -37,7 +37,7 @@ type pastePageData struct {
 	PasteURL     string
 	RawURL       string
 	RawPath      string
-	Content      string
+	RenderedHTML template.HTML
 	Code         string
 	CreatedAt    string
 	CreatedLabel string
@@ -55,12 +55,17 @@ func (s *Server) renderHome(w http.ResponseWriter) {
 
 func (s *Server) renderPaste(w http.ResponseWriter, r *http.Request, found paste.Paste) {
 	baseURL := s.absoluteBaseURL(r)
+	renderedHTML, err := renderMarkdown(found.Content)
+	if err != nil {
+		http.Error(w, "paste rendering failed", http.StatusInternalServerError)
+		return
+	}
 	s.renderTemplate(w, "paste.html", pastePageData{
 		pageAssets:   assets(),
 		PasteURL:     pasteViewURL(baseURL, found.Code),
 		RawURL:       rawPasteURL(baseURL, found.Code),
 		RawPath:      "/raw/" + found.Code,
-		Content:      string(found.Content),
+		RenderedHTML: renderedHTML,
 		Code:         found.Code,
 		CreatedAt:    htmlTime(found.CreatedAt),
 		CreatedLabel: displayTime(found.CreatedAt),
