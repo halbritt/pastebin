@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"pastebin/internal/client"
@@ -158,7 +159,55 @@ func configuredServer(flagValue string) (string, error) {
 	if server := strings.TrimSpace(os.Getenv("PASTEBIN_URL")); server != "" {
 		return server, nil
 	}
+	if server, err := configuredServerFromFile(); err != nil {
+		return "", err
+	} else if server != "" {
+		return server, nil
+	}
 	return "", client.ErrMissingBaseURL
+}
+
+func configuredServerFromFile() (string, error) {
+	path, err := configPath()
+	if err != nil {
+		return "", err
+	}
+	content, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return parseConfigServer(content), nil
+}
+
+func configPath() (string, error) {
+	if path := strings.TrimSpace(os.Getenv("PASTEBIN_CONFIG")); path != "" {
+		return path, nil
+	}
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configDir, "pastebin", "config"), nil
+}
+
+func parseConfigServer(content []byte) string {
+	for _, line := range strings.Split(string(content), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if key, value, ok := strings.Cut(line, "="); ok {
+			if strings.TrimSpace(key) == "server" {
+				return strings.TrimSpace(value)
+			}
+			continue
+		}
+		return line
+	}
+	return ""
 }
 
 func configuredServerForGet(flagValue, target string) (string, error) {

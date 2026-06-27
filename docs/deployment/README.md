@@ -73,7 +73,8 @@ for Pastebin.
 ## CLI Smoke Test
 
 ```sh
-export PASTEBIN_URL=https://paste.example.ts.net
+mkdir -p ~/.config/pastebin
+printf 'server=https://paste.example.ts.net\n' > ~/.config/pastebin/config
 printf 'tailnet paste\n' | pastebin
 pastebin get abc234def567ghjk
 ```

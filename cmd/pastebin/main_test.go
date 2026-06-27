@@ -48,6 +48,45 @@ func TestRunCreateFromFilePrintsOnlyPasteURL(t *testing.T) {
 	}
 }
 
+func TestRunCreateFromFileUsesConfigServer(t *testing.T) {
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			t.Fatalf("path = %q, want /", r.URL.Path)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != "from file via config\n" {
+			t.Fatalf("body = %q, want file content", string(body))
+		}
+		_, _ = io.WriteString(w, server.URL+"/p/config1\n")
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "paste.txt")
+	configFile := filepath.Join(dir, "config")
+	if err := os.WriteFile(file, []byte("from file via config\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configFile, []byte("server="+server.URL+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PASTEBIN_URL", "")
+	t.Setenv("PASTEBIN_CONFIG", configFile)
+
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{file}, nil, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
+	}
+	if got := stdout.String(); got != server.URL+"/p/config1\n" {
+		t.Fatalf("stdout = %q, want only paste URL", got)
+	}
+}
+
 func TestRunCreateFromStdinJSON(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -68,10 +68,17 @@ Allowed creation expirations are `1h`, `1d`, `7d`, and `30d`.
 
 ## CLI Examples
 
-Set the service URL once:
+Set the service URL once with either `PASTEBIN_URL`:
 
 ```sh
 export PASTEBIN_URL=https://paste.example.ts.net
+```
+
+or a config file:
+
+```sh
+mkdir -p ~/.config/pastebin
+printf 'server=https://paste.example.ts.net\n' > ~/.config/pastebin/config
 ```
 
 Create a Paste from standard input:
