@@ -12,6 +12,36 @@ import (
 	"testing"
 )
 
+func TestRunHelp(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "root long", args: []string{"--help"}, want: "pastebin [--server URL]"},
+		{name: "root short", args: []string{"-h"}, want: "PASTEBIN_CONFIG"},
+		{name: "help command", args: []string{"help"}, want: "pastebin get"},
+		{name: "get long", args: []string{"get", "--help"}, want: "Retrieve a paste"},
+		{name: "get topic", args: []string{"help", "get"}, want: "pastebin get [--server URL]"},
+		{name: "version", args: []string{"version", "--help"}, want: "Print the pastebin CLI version"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), tt.args, nil, &stdout, &stderr)
+			if code != 0 {
+				t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
+			}
+			if stderr.Len() != 0 {
+				t.Fatalf("stderr = %q, want empty", stderr.String())
+			}
+			if !bytes.Contains(stdout.Bytes(), []byte(tt.want)) {
+				t.Fatalf("stdout = %q, want substring %q", stdout.String(), tt.want)
+			}
+		})
+	}
+}
+
 func TestRunCreateFromFilePrintsOnlyPasteURL(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
