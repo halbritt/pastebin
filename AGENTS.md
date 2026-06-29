@@ -42,6 +42,7 @@ Paste URLs. The accepted product boundary is documented in `CONTEXT.md` and
 This repository is represented in the local/private Plane workspace `Proximal`.
 
 - Plane project: `Pastebin` (`PASTEBIN`)
+- Issue tracker: Plane (`Proximal` workspace), project `Pastebin` (`PASTEBIN`).
 - Plane URL: `https://proximal.tail0ecc2e.ts.net:10000/`
 - GitHub repo: `https://github.com/halbritt/pastebin`
 - Use Plane work items for multi-agent planning, claims, submitted artifacts, reviews, and acceptance decisions.
