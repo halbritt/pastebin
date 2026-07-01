@@ -7,10 +7,11 @@ import (
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 )
 
 var (
-	markdownParser    = goldmark.New()
+	markdownParser    = goldmark.New(goldmark.WithExtensions(extension.Table))
 	markdownSanitizer = bluemonday.UGCPolicy()
 )
 
