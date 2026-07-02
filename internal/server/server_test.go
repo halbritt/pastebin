@@ -270,7 +270,7 @@ func TestPasteViewRendersMarkdownTables(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
 	}
-	for _, want := range []string{"<table>", "<thead>", "<tbody>", "<th>Header 1</th>", "<td>Cell 1</td>"} {
+	for _, want := range []string{"<table>", "<thead>", "<tbody>", "<th>Header 1</th>", `<td data-label="Header 1">Cell 1</td>`, `<td data-label="Header 2">Cell 2</td>`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("body missing expected table tag %q in output: %s", want, body)
 		}

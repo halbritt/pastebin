@@ -289,4 +289,60 @@ button:hover {
   .actions button {
     width: 100%;
   }
+
+  .paste-rendered table,
+  .paste-rendered thead,
+  .paste-rendered tbody,
+  .paste-rendered tr,
+  .paste-rendered th,
+  .paste-rendered td {
+    display: block;
+  }
+
+  .paste-rendered table {
+    width: 100%;
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .paste-rendered thead {
+    display: none;
+  }
+
+  .paste-rendered tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .paste-rendered tr {
+    border: 1px solid var(--border);
+    background: #fff;
+  }
+
+  .paste-rendered th,
+  .paste-rendered td {
+    min-width: 0;
+    max-width: none;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .paste-rendered td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .paste-rendered td[data-label="Status"] {
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+
+  .paste-rendered td:last-child {
+    border-bottom: 0;
+  }
 }
