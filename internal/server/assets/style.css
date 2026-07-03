@@ -34,6 +34,10 @@ a {
   padding: 32px 0;
 }
 
+.paste-shell {
+  width: min(100% - 32px, 1760px);
+}
+
 .workspace {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -400,5 +404,44 @@ button:hover {
 
   .paste-rendered td:last-child {
     border-bottom: 0;
+  }
+}
+
+@media (min-width: 1100px) {
+  .paste-rendered table.table-wide {
+    display: table;
+    width: 100%;
+    min-width: 0;
+    border-collapse: collapse;
+    border-spacing: 0;
+    table-layout: fixed;
+    font-size: 14px;
+  }
+
+  .paste-rendered table.table-wide thead {
+    display: table-header-group;
+  }
+
+  .paste-rendered table.table-wide tbody {
+    display: table-row-group;
+  }
+
+  .paste-rendered table.table-wide tr {
+    display: table-row;
+    border: 0;
+  }
+
+  .paste-rendered table.table-wide th,
+  .paste-rendered table.table-wide td {
+    display: table-cell;
+    min-width: 0;
+    max-width: none;
+    border: 1px solid var(--border);
+    padding: 7px 8px;
+  }
+
+  .paste-rendered table.table-wide td::before {
+    content: none;
+    display: none;
   }
 }
