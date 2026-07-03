@@ -233,6 +233,62 @@ button:hover {
   background-color: #fbfcfb;
 }
 
+.paste-rendered table.table-wide,
+.paste-rendered table.table-wide thead,
+.paste-rendered table.table-wide tbody,
+.paste-rendered table.table-wide tr,
+.paste-rendered table.table-wide th,
+.paste-rendered table.table-wide td {
+  display: block;
+}
+
+.paste-rendered table.table-wide {
+  width: 100%;
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.paste-rendered table.table-wide thead {
+  display: none;
+}
+
+.paste-rendered table.table-wide tbody {
+  display: grid;
+  gap: 12px;
+}
+
+.paste-rendered table.table-wide tr {
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.paste-rendered table.table-wide th,
+.paste-rendered table.table-wide td {
+  min-width: 0;
+  max-width: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.paste-rendered table.table-wide td::before {
+  content: attr(data-label);
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.paste-rendered table.table-wide td[data-label="Status"] {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.paste-rendered table.table-wide td:last-child {
+  border-bottom: 0;
+}
+
 .paste-rendered > :first-child {
   margin-top: 0;
 }

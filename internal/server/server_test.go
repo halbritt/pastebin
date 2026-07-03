@@ -277,6 +277,36 @@ func TestPasteViewRendersMarkdownTables(t *testing.T) {
 	}
 }
 
+func TestPasteViewMarksWideMarkdownTables(t *testing.T) {
+	content := []byte("| One | Two | Three | Four | Five |\n| --- | --- | --- | --- | --- |\n| A | B | C | D | E |")
+	store := &recordingStore{
+		getFunc: func(code string, _ time.Time) (paste.Paste, error) {
+			return paste.Paste{
+				Code:      code,
+				Content:   content,
+				CreatedAt: testNow,
+				ExpiresAt: testNow.Add(time.Hour),
+				Size:      int64(len(content)),
+			}, nil
+		},
+	}
+	handler := testServer(t, store, 1024)
+	request := httptest.NewRequest(http.MethodGet, "/p/wide123", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	body := response.Body.String()
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	for _, want := range []string{`<table class="table-wide">`, `<td data-label="One">A</td>`, `<td data-label="Five">E</td>`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body missing expected wide table output %q in output: %s", want, body)
+		}
+	}
+}
+
 func TestPostRootJSONCreateBody(t *testing.T) {
 	store := &recordingStore{
 		createFunc: func(req paste.CreateRequest) (paste.Paste, error) {

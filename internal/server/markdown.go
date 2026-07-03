@@ -17,6 +17,8 @@ var (
 	markdownSanitizer = bluemonday.UGCPolicy()
 )
 
+const wideTableColumnThreshold = 4
+
 func renderMarkdown(content []byte) (template.HTML, error) {
 	var rendered bytes.Buffer
 	if err := markdownParser.Convert(content, &rendered); err != nil {
@@ -67,6 +69,9 @@ func labelTableRows(table *html.Node) {
 	labels := cellLabels(headerRow)
 	if len(labels) == 0 {
 		return
+	}
+	if len(labels) > wideTableColumnThreshold {
+		addClass(table, "table-wide")
 	}
 	for _, row := range descendantElements(table, "tr") {
 		if row == headerRow || hasAncestor(row, "thead") {
@@ -170,4 +175,21 @@ func setAttr(node *html.Node, key, value string) {
 		}
 	}
 	node.Attr = append(node.Attr, html.Attribute{Key: key, Val: value})
+}
+
+func addClass(node *html.Node, className string) {
+	for i := range node.Attr {
+		if node.Attr[i].Key == "class" {
+			classes := strings.Fields(node.Attr[i].Val)
+			for _, existing := range classes {
+				if existing == className {
+					return
+				}
+			}
+			classes = append(classes, className)
+			node.Attr[i].Val = strings.Join(classes, " ")
+			return
+		}
+	}
+	node.Attr = append(node.Attr, html.Attribute{Key: "class", Val: className})
 }
