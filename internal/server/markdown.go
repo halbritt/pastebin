@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"regexp"
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -13,8 +14,8 @@ import (
 )
 
 var (
-	markdownParser    = goldmark.New(goldmark.WithExtensions(extension.Table))
-	markdownSanitizer = bluemonday.UGCPolicy()
+	markdownParser    = goldmark.New(goldmark.WithExtensions(extension.GFM))
+	markdownSanitizer = newMarkdownSanitizer()
 )
 
 const wideTableColumnThreshold = 4
@@ -24,14 +25,21 @@ func renderMarkdown(content []byte) (template.HTML, error) {
 	if err := markdownParser.Convert(content, &rendered); err != nil {
 		return "", fmt.Errorf("render markdown: %w", err)
 	}
-	labeled, err := addTableCellLabels(markdownSanitizer.SanitizeBytes(rendered.Bytes()))
+	labeled, err := postProcessMarkdownHTML(markdownSanitizer.SanitizeBytes(rendered.Bytes()))
 	if err != nil {
-		return "", fmt.Errorf("label markdown tables: %w", err)
+		return "", fmt.Errorf("post-process markdown HTML: %w", err)
 	}
 	return template.HTML(labeled), nil
 }
 
-func addTableCellLabels(content []byte) ([]byte, error) {
+func newMarkdownSanitizer() *bluemonday.Policy {
+	policy := bluemonday.UGCPolicy()
+	policy.AllowAttrs("type").Matching(regexp.MustCompile(`^checkbox$`)).OnElements("input")
+	policy.AllowAttrs("checked", "disabled").Matching(regexp.MustCompile(`^$`)).OnElements("input")
+	return policy
+}
+
+func postProcessMarkdownHTML(content []byte) ([]byte, error) {
 	doc, err := html.Parse(bytes.NewReader(content))
 	if err != nil {
 		return nil, err
@@ -40,6 +48,7 @@ func addTableCellLabels(content []byte) ([]byte, error) {
 	if body == nil {
 		return content, nil
 	}
+	removeUnexpectedInputs(body)
 	labelTables(body)
 
 	var output bytes.Buffer
@@ -49,6 +58,44 @@ func addTableCellLabels(content []byte) ([]byte, error) {
 		}
 	}
 	return output.Bytes(), nil
+}
+
+func removeUnexpectedInputs(node *html.Node) {
+	for child := node.FirstChild; child != nil; {
+		next := child.NextSibling
+		if isElement(child, "input") && !isDisabledTaskCheckbox(child) {
+			node.RemoveChild(child)
+		} else {
+			removeUnexpectedInputs(child)
+		}
+		child = next
+	}
+}
+
+func isDisabledTaskCheckbox(node *html.Node) bool {
+	var hasType, hasDisabled, hasChecked bool
+	for _, attr := range node.Attr {
+		switch attr.Key {
+		case "type":
+			if hasType || attr.Val != "checkbox" {
+				return false
+			}
+			hasType = true
+		case "disabled":
+			if hasDisabled || attr.Val != "" {
+				return false
+			}
+			hasDisabled = true
+		case "checked":
+			if hasChecked || attr.Val != "" {
+				return false
+			}
+			hasChecked = true
+		default:
+			return false
+		}
+	}
+	return hasType && hasDisabled
 }
 
 func labelTables(node *html.Node) {
