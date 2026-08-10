@@ -53,6 +53,28 @@ Routes:
 | `GET` | `/raw/{code}` | Raw Paste text |
 | `GET` | `/healthz` | Health check |
 
+## Browser Paste Rendering
+
+`GET /p/{code}` renders the stored text as Markdown with Goldmark's built-in
+GitHub Flavored Markdown (GFM) extension bundle. Paste Views support:
+
+- tables
+- strikethrough with `~~text~~`
+- literal URL and email autolinks
+- task lists with `- [ ]` and `- [x]`
+
+Task-list checkboxes are display-only. They are rendered disabled, and the HTML
+sanitizer permits only the checkbox attributes needed for that output.
+
+Markdown rendering happens when the browser requests a Paste View, so the same
+dialect applies to pastes created before this support was added. Stored content,
+`GET /raw/{code}`, CLI retrieval, and `pastebin get --json` continue to return
+the submitted text instead of rendered HTML.
+
+Paste Views do not render raw HTML and do not add footnotes, definition lists,
+emoji expansion, math or diagram syntax, syntax highlighting, or interactive
+task state.
+
 ## Configuration
 
 | Variable | Default/example | Purpose |
