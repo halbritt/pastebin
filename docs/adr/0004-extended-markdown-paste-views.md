@@ -4,8 +4,12 @@
 
 The browser Paste View renders Markdown with Goldmark's built-in GitHub
 Flavored Markdown (GFM) extension bundle. The accepted extended dialect is
-limited to tables, strikethrough, literal URL and email autolinks, and task
-lists.
+limited to tables, strikethrough, task lists, and literal autolinks for
+`http://`, `https://`, `www.`, and email addresses.
+
+The supported autolinks are the links that remain after sanitization. Although
+Goldmark's Linkify parser recognizes FTP URLs, the sanitizer does not permit
+the `ftp` scheme, so FTP URLs remain plain text.
 
 Task-list markers render as disabled checkboxes. Sanitization permits only the
 renderer-generated checkbox shape and does not allow a reader to change task

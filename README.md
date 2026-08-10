@@ -60,8 +60,11 @@ GitHub Flavored Markdown (GFM) extension bundle. Paste Views support:
 
 - tables
 - strikethrough with `~~text~~`
-- literal URL and email autolinks
+- literal autolinks for `http://`, `https://`, `www.`, and email addresses
 - task lists with `- [ ]` and `- [x]`
+
+FTP URLs remain plain text because the sanitizer does not permit the `ftp`
+scheme.
 
 Task-list checkboxes are display-only. They are rendered disabled, and the HTML
 sanitizer permits only the checkbox attributes needed for that output.
