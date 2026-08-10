@@ -9,7 +9,7 @@ import (
 )
 
 func TestPasteViewRendersGFMTextExtensions(t *testing.T) {
-	rendered, err := renderMarkdown([]byte("~~removed~~\n\nVisit https://example.com or email team@example.com."))
+	rendered, err := renderMarkdown([]byte("~~removed~~\n\nVisit www.example.com, https://example.com, or email team@example.com."))
 	if err != nil {
 		t.Fatalf("render markdown: %v", err)
 	}
@@ -17,6 +17,7 @@ func TestPasteViewRendersGFMTextExtensions(t *testing.T) {
 	body := string(rendered)
 	for _, want := range []string{
 		"<del>removed</del>",
+		`href="http://www.example.com"`,
 		`href="https://example.com"`,
 		`href="mailto:team@example.com"`,
 	} {
