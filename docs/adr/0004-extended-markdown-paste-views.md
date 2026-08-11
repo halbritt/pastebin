@@ -25,7 +25,7 @@ and expiration behavior are unchanged.
 ## Exclusions
 
 This decision does not add raw HTML, footnotes, definition lists, emoji
-expansion, math or diagram syntax, syntax highlighting, or client-side
+expansion, math or diagram syntax, code syntax highlighting, or client-side
 interactive task state. Adding any of these features requires a separate
 decision because each one changes the rendering or sanitization contract beyond
 Goldmark's built-in GFM bundle.

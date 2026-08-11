@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	markdownParser    = goldmark.New(goldmark.WithExtensions(extension.GFM))
+	markdownParser    = goldmark.New(goldmark.WithExtensions(extension.GFM, &highlightExtension{}))
 	markdownSanitizer = newMarkdownSanitizer()
 )
 

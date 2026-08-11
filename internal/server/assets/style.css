@@ -216,6 +216,12 @@ button:hover {
   vertical-align: -0.1em;
 }
 
+.paste-rendered mark {
+  background-color: #fff2a8;
+  color: inherit;
+  padding: 0 0.12em;
+}
+
 .paste-rendered table {
   border-collapse: collapse;
   width: max-content;

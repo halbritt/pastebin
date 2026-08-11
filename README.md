@@ -56,12 +56,14 @@ Routes:
 ## Browser Paste Rendering
 
 `GET /p/{code}` renders the stored text as Markdown with Goldmark's built-in
-GitHub Flavored Markdown (GFM) extension bundle. Paste Views support:
+GitHub Flavored Markdown (GFM) extension bundle and a local text-highlighting
+extension. Paste Views support:
 
 - tables
 - strikethrough with `~~text~~`
 - literal autolinks for `http://`, `https://`, `www.`, and email addresses
 - task lists with `- [ ]` and `- [x]`
+- highlighted text with `==text==`
 
 FTP URLs remain plain text because the sanitizer does not permit the `ftp`
 scheme.
@@ -75,8 +77,8 @@ dialect applies to pastes created before this support was added. Stored content,
 the submitted text instead of rendered HTML.
 
 Paste Views do not render raw HTML and do not add footnotes, definition lists,
-emoji expansion, math or diagram syntax, syntax highlighting, or interactive
-task state.
+emoji expansion, math or diagram syntax, code syntax highlighting, or
+interactive task state.
 
 ## Configuration
 

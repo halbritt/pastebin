@@ -27,6 +27,58 @@ func TestPasteViewRendersGFMTextExtensions(t *testing.T) {
 	}
 }
 
+func TestPasteViewRendersHighlightedText(t *testing.T) {
+	rendered, err := renderMarkdown([]byte("Before ==important== after."))
+	if err != nil {
+		t.Fatalf("render markdown: %v", err)
+	}
+
+	if !strings.Contains(string(rendered), "Before <mark>important</mark> after.") {
+		t.Fatalf("rendered markdown does not highlight text: %s", rendered)
+	}
+}
+
+func TestPasteViewRendersMarkdownInsideHighlightedText(t *testing.T) {
+	rendered, err := renderMarkdown([]byte("==**important** and *new*=="))
+	if err != nil {
+		t.Fatalf("render markdown: %v", err)
+	}
+
+	if !strings.Contains(string(rendered), "<mark><strong>important</strong> and <em>new</em></mark>") {
+		t.Fatalf("rendered highlight does not contain formatted text: %s", rendered)
+	}
+}
+
+func TestPasteViewDoesNotHighlightLiteralContexts(t *testing.T) {
+	content := "`==inline code==`\n\n```text\n==code block==\n```\n\n\\==escaped\\==\n\n<mark>raw HTML</mark>"
+	rendered, err := renderMarkdown([]byte(content))
+	if err != nil {
+		t.Fatalf("render markdown: %v", err)
+	}
+
+	body := string(rendered)
+	if strings.Contains(body, "<mark>") {
+		t.Fatalf("literal context produced active highlight markup: %s", rendered)
+	}
+	for _, want := range []string{"<code>==inline code==</code>", "==code block==", "==escaped=="} {
+		if !strings.Contains(body, want) {
+			t.Errorf("rendered markdown missing literal %q: %s", want, rendered)
+		}
+	}
+}
+
+func TestPasteViewHighlightsOnlyDoubleEqualsDelimiterRuns(t *testing.T) {
+	rendered, err := renderMarkdown([]byte("==two== ===three=== ===="))
+	if err != nil {
+		t.Fatalf("render markdown: %v", err)
+	}
+
+	body := string(rendered)
+	if strings.Count(body, "<mark>") != 1 || !strings.Contains(body, "<mark>two</mark> ===three=== ====") {
+		t.Fatalf("rendered markdown accepted a non-double delimiter run: %s", rendered)
+	}
+}
+
 func TestPasteViewRendersDisabledTaskCheckboxes(t *testing.T) {
 	rendered, err := renderMarkdown([]byte("- [ ] pending\n- [x] done"))
 	if err != nil {
