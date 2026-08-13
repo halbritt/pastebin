@@ -1,0 +1,22 @@
+{{define "public_home.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pastebin</title>
+  <style>{{.Style}}</style>
+</head>
+<body>
+  <main class="shell">
+    <section class="workspace">
+      <header class="topbar">
+        <h1>Pastebin</h1>
+      </header>
+      <p>Paste creation is available only inside the private tailnet.</p>
+      <p>This public endpoint reads unexpired Pastes through their bearer links.</p>
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

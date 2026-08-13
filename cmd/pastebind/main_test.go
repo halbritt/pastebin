@@ -31,6 +31,7 @@ func TestParseConfigRejectsInvalidEnvironment(t *testing.T) {
 
 func TestParseConfigUsesEnvironmentAndFlags(t *testing.T) {
 	t.Setenv("PASTEBIN_BASE_URL", "https://paste.example.ts.net/")
+	t.Setenv("PASTEBIN_PUBLIC_HOST", "pastebin.harm.org")
 	t.Setenv("PASTEBIN_LISTEN", "127.0.0.1:9090")
 	t.Setenv("PASTEBIN_DB", "/tmp/pastebin.db")
 	t.Setenv("PASTEBIN_MAX_BYTES", "64")
@@ -43,6 +44,9 @@ func TestParseConfigUsesEnvironmentAndFlags(t *testing.T) {
 	}
 	if cfg.BaseURL != "https://paste.example.ts.net" {
 		t.Fatalf("BaseURL = %q", cfg.BaseURL)
+	}
+	if cfg.PublicHost != "pastebin.harm.org" {
+		t.Fatalf("PublicHost = %q", cfg.PublicHost)
 	}
 	if cfg.Listen != "127.0.0.1:8081" {
 		t.Fatalf("Listen = %q", cfg.Listen)
@@ -61,5 +65,19 @@ func TestParseConfigRejectsInvalidLimits(t *testing.T) {
 	}
 	if _, err := parseConfig([]string{"--default-ttl", (paste.MaxTTL + time.Hour).String()}); err == nil {
 		t.Fatal("parseConfig(default ttl over max) error = nil, want error")
+	}
+}
+
+func TestParseConfigRejectsPublicHostWithSchemePathOrPort(t *testing.T) {
+	for _, publicHost := range []string{
+		"https://pastebin.harm.org",
+		"pastebin.harm.org/public",
+		"pastebin.harm.org:443",
+	} {
+		t.Run(publicHost, func(t *testing.T) {
+			if _, err := parseConfig([]string{"--public-host", publicHost}); err == nil {
+				t.Fatalf("parseConfig(public host %q) error = nil, want error", publicHost)
+			}
+		})
 	}
 }

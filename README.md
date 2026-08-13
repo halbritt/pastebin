@@ -1,12 +1,12 @@
 # Pastebin
 
-Pastebin is a private tailnet service for turning plain text into a Paste URL
-that can be opened from another machine, shell, or browser.
+Pastebin turns plain text into a bearer Paste URL. Paste creation is available
+only inside the trusted tailnet; rendered and Raw Paste reads can be shared at
+the configured public read-only host.
 
-The security boundary is the trusted tailnet. The service has no application
-accounts in v1: anyone who can reach it may create a Paste, and anyone with a
-Paste URL may read that Paste. Deploy it with Tailscale Serve, not Tailscale
-Funnel.
+The service has no application accounts. Anyone who can reach the private
+endpoint may create a Paste, and anyone with a Paste URL may read that Paste.
+The public host has its own application route set and cannot create Pastes.
 
 ## Build
 
@@ -53,6 +53,11 @@ Routes:
 | `GET` | `/raw/{code}` | Raw Paste text |
 | `GET` | `/healthz` | Health check |
 
+When `PASTEBIN_PUBLIC_HOST` is configured, that host serves only `GET /`,
+`GET /p/{code}`, `GET /raw/{code}`, and `GET /healthz`. The public home page
+explains that creation is private. Public responses disable shared caching,
+referrer transmission, and search indexing.
+
 ## Browser Paste Rendering
 
 `GET /p/{code}` renders the stored text as Markdown with Goldmark's built-in
@@ -84,7 +89,8 @@ interactive task state.
 
 | Variable | Default/example | Purpose |
 | --- | --- | --- |
-| `PASTEBIN_BASE_URL` | `https://paste.example.ts.net` | Public base URL returned in Paste receipts |
+| `PASTEBIN_BASE_URL` | `https://pastebin.harm.org` | Base URL returned in Paste receipts |
+| `PASTEBIN_PUBLIC_HOST` | empty | Hostname that receives the read-only public route set |
 | `PASTEBIN_LISTEN` | `127.0.0.1:8080` | HTTP listen address |
 | `PASTEBIN_DB` | `/var/lib/pastebin/pastebin.db` | SQLite database path |
 | `PASTEBIN_MAX_BYTES` | `1048576` | Maximum Paste size in bytes |
@@ -95,17 +101,17 @@ Allowed creation expirations are `1h`, `1d`, `7d`, and `30d`.
 
 ## CLI Examples
 
-Set the service URL once with either `PASTEBIN_URL`:
+Set the private creation endpoint once with either `PASTEBIN_URL`:
 
 ```sh
-export PASTEBIN_URL=https://paste.example.ts.net
+export PASTEBIN_URL=https://proximal.example.ts.net:18080
 ```
 
 or a config file:
 
 ```sh
 mkdir -p ~/.config/pastebin
-printf 'server=https://paste.example.ts.net\n' > ~/.config/pastebin/config
+printf 'server=https://proximal.example.ts.net:18080\n' > ~/.config/pastebin/config
 ```
 
 Create a Paste from standard input:

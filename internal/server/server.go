@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,6 +18,7 @@ import (
 type Config struct {
 	Store      paste.Store
 	BaseURL    string
+	PublicHost string
 	MaxBytes   int64
 	DefaultTTL time.Duration
 	MaxTTL     time.Duration
@@ -26,7 +28,9 @@ type Config struct {
 type Server struct {
 	store      paste.Store
 	mux        *http.ServeMux
+	publicMux  *http.ServeMux
 	baseURL    string
+	publicHost string
 	maxBytes   int64
 	defaultTTL time.Duration
 	maxTTL     time.Duration
@@ -48,6 +52,7 @@ func New(cfg Config) (*Server, error) {
 	srv := &Server{
 		store:      cfg.Store,
 		baseURL:    strings.TrimRight(cfg.BaseURL, "/"),
+		publicHost: normalizeHost(cfg.PublicHost),
 		maxBytes:   defaultMaxBytes(cfg.MaxBytes),
 		defaultTTL: defaultTTL(cfg.DefaultTTL),
 		maxTTL:     defaultMaxTTL(cfg.MaxTTL),
@@ -58,7 +63,18 @@ func New(cfg Config) (*Server, error) {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if s.publicHost != "" && normalizeHost(r.Host) == s.publicHost {
+		setPublicReadHeaders(w.Header())
+		s.publicMux.ServeHTTP(w, r)
+		return
+	}
 	s.mux.ServeHTTP(w, r)
+}
+
+func setPublicReadHeaders(header http.Header) {
+	header.Set("Cache-Control", "private, no-store")
+	header.Set("Referrer-Policy", "no-referrer")
+	header.Set("X-Robots-Tag", "noindex, nofollow, noarchive")
 }
 
 func (s *Server) mountRoutes() {
@@ -69,6 +85,25 @@ func (s *Server) mountRoutes() {
 	mux.HandleFunc("GET /raw/{code}", s.rawPaste)
 	mux.HandleFunc("GET /healthz", s.health)
 	s.mux = mux
+
+	publicMux := http.NewServeMux()
+	publicMux.HandleFunc("GET /{$}", s.publicHome)
+	publicMux.HandleFunc("GET /p/{code}", s.pasteView)
+	publicMux.HandleFunc("GET /raw/{code}", s.rawPaste)
+	publicMux.HandleFunc("GET /healthz", s.health)
+	s.publicMux = publicMux
+}
+
+func (s *Server) publicHome(w http.ResponseWriter, _ *http.Request) {
+	s.renderPublicHome(w)
+}
+
+func normalizeHost(value string) string {
+	value = strings.TrimSpace(value)
+	if host, _, err := net.SplitHostPort(value); err == nil {
+		value = host
+	}
+	return strings.ToLower(strings.TrimSuffix(value, "."))
 }
 
 func (s *Server) home(w http.ResponseWriter, _ *http.Request) {

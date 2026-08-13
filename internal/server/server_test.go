@@ -345,6 +345,141 @@ func TestPostRootJSONCreateBody(t *testing.T) {
 	}
 }
 
+func TestPublicHostRejectsPasteCreation(t *testing.T) {
+	createCalled := false
+	store := &recordingStore{
+		createFunc: func(req paste.CreateRequest) (paste.Paste, error) {
+			createCalled = true
+			return paste.Paste{}, nil
+		},
+	}
+	server, err := New(Config{
+		Store:      store,
+		PublicHost: "pastebin.harm.org",
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "https://pastebin.harm.org/", strings.NewReader("public write"))
+	request.Host = "PASTEBIN.HARM.ORG:443"
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusMethodNotAllowed)
+	}
+	if createCalled {
+		t.Fatal("public request reached Paste creation")
+	}
+}
+
+func TestPrivateHostStillCreatesPasteWhenPublicHostIsConfigured(t *testing.T) {
+	content := []byte("private write")
+	createCalled := false
+	server, err := New(Config{
+		Store: &recordingStore{
+			createFunc: func(req paste.CreateRequest) (paste.Paste, error) {
+				createCalled = true
+				return paste.Paste{
+					Code:      "private123",
+					Content:   req.Content,
+					CreatedAt: testNow,
+					ExpiresAt: testNow.Add(time.Hour),
+					Size:      int64(len(req.Content)),
+				}, nil
+			},
+		},
+		BaseURL:    "https://pastebin.harm.org",
+		PublicHost: "pastebin.harm.org",
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "https://proximal.tail0ecc2e.ts.net:18080/", bytes.NewReader(content))
+	request.Header.Set("Accept", "application/json")
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusCreated, response.Body.String())
+	}
+	if !createCalled {
+		t.Fatal("private request did not reach Paste creation")
+	}
+	if !strings.Contains(response.Body.String(), `"url":"https://pastebin.harm.org/p/private123"`) {
+		t.Fatalf("private creation receipt does not use public Paste URL: %s", response.Body.String())
+	}
+}
+
+func TestPublicHostShowsReadOnlyLandingPage(t *testing.T) {
+	server, err := New(Config{
+		Store:      &recordingStore{},
+		PublicHost: "pastebin.harm.org",
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "https://pastebin.harm.org/", nil)
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	body := response.Body.String()
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if strings.Contains(body, `id="create-form"`) {
+		t.Fatalf("public landing page exposes Paste creation form: %s", body)
+	}
+	if !strings.Contains(body, "Paste creation is available only inside the private tailnet.") {
+		t.Fatalf("public landing page does not explain read-only access: %s", body)
+	}
+}
+
+func TestPublicHostReadsPasteWithoutLeakingBearerURL(t *testing.T) {
+	content := []byte("public read")
+	server, err := New(Config{
+		Store: &recordingStore{
+			getFunc: func(code string, _ time.Time) (paste.Paste, error) {
+				return paste.Paste{
+					Code:      code,
+					Content:   content,
+					CreatedAt: testNow,
+					ExpiresAt: testNow.Add(time.Hour),
+					Size:      int64(len(content)),
+				}, nil
+			},
+		},
+		PublicHost: "pastebin.harm.org",
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "https://pastebin.harm.org/p/public123", nil)
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if !strings.Contains(response.Body.String(), "public read") {
+		t.Fatalf("public Paste View missing content: %s", response.Body.String())
+	}
+	wantHeaders := map[string]string{
+		"Cache-Control":   "private, no-store",
+		"Referrer-Policy": "no-referrer",
+		"X-Robots-Tag":    "noindex, nofollow, noarchive",
+	}
+	for name, want := range wantHeaders {
+		if got := response.Header().Get(name); got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+}
+
 func TestPasteViewJSON(t *testing.T) {
 	content := []byte("json view")
 	store := &recordingStore{

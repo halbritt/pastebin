@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -43,6 +44,7 @@ func run(ctx context.Context, args []string) error {
 	handler, err := server.New(server.Config{
 		Store:      store,
 		BaseURL:    cfg.BaseURL,
+		PublicHost: cfg.PublicHost,
 		MaxBytes:   cfg.MaxBytes,
 		DefaultTTL: cfg.DefaultTTL,
 		MaxTTL:     cfg.MaxTTL,
@@ -84,6 +86,7 @@ func run(ctx context.Context, args []string) error {
 
 type config struct {
 	BaseURL    string
+	PublicHost string
 	Listen     string
 	DBPath     string
 	MaxBytes   int64
@@ -107,6 +110,7 @@ func parseConfig(args []string) (config, error) {
 	}
 
 	baseURL := flags.String("base-url", getenv("PASTEBIN_BASE_URL", "http://"+defaultListen), "base URL used in paste receipts")
+	publicHost := flags.String("public-host", getenv("PASTEBIN_PUBLIC_HOST", ""), "public read-only hostname")
 	listen := flags.String("listen", getenv("PASTEBIN_LISTEN", defaultListen), "HTTP listen address")
 	dbPath := flags.String("db", getenv("PASTEBIN_DB", "pastebin.db"), "SQLite database path")
 	maxBytes := flags.Int64("max-bytes", envMaxBytes, "maximum paste size in bytes")
@@ -133,14 +137,31 @@ func parseConfig(args []string) (config, error) {
 	if _, err := paste.ValidateTTL(*defaultTTL, *defaultTTL, *maxTTL); err != nil {
 		return config{}, fmt.Errorf("default ttl: %w", err)
 	}
+	normalizedPublicHost, err := normalizePublicHost(*publicHost)
+	if err != nil {
+		return config{}, err
+	}
 	return config{
 		BaseURL:    strings.TrimRight(strings.TrimSpace(*baseURL), "/"),
+		PublicHost: normalizedPublicHost,
 		Listen:     strings.TrimSpace(*listen),
 		DBPath:     strings.TrimSpace(*dbPath),
 		MaxBytes:   *maxBytes,
 		DefaultTTL: *defaultTTL,
 		MaxTTL:     *maxTTL,
 	}, nil
+}
+
+func normalizePublicHost(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(value), "."))
+	if value == "" {
+		return "", nil
+	}
+	parsed, err := url.Parse("http://" + value)
+	if err != nil || parsed.Hostname() != value || parsed.Port() != "" || parsed.Path != "" {
+		return "", fmt.Errorf("public host must be a hostname without a scheme, path, or port: %q", value)
+	}
+	return value, nil
 }
 
 func getenv(key, fallback string) string {

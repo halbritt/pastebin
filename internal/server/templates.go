@@ -53,6 +53,10 @@ func (s *Server) renderHome(w http.ResponseWriter) {
 	})
 }
 
+func (s *Server) renderPublicHome(w http.ResponseWriter) {
+	s.renderTemplate(w, "public_home.html", assets())
+}
+
 func (s *Server) renderPaste(w http.ResponseWriter, r *http.Request, found paste.Paste) {
 	baseURL := s.absoluteBaseURL(r)
 	renderedHTML, err := renderMarkdown(found.Content)

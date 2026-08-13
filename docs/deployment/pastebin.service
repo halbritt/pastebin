@@ -1,5 +1,5 @@
 [Unit]
-Description=Pastebin private tailnet service
+Description=Pastebin service
 Wants=network-online.target
 After=network-online.target
 

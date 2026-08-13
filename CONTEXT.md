@@ -1,6 +1,6 @@
 # Pastebin
 
-Pastebin is a text-sharing context for moving plain text between machines, shells, and browsers by turning pasted content into a retrievable link.
+Pastebin is a text-sharing context for moving plain text between machines, shells, and browsers by turning pasted content into a retrievable link. Paste creation stays inside a trusted network boundary; a Creator may choose to share the resulting bearer link outside that boundary.
 
 ## Language
 
@@ -35,6 +35,10 @@ _Avoid_: Admin console, document editor
 **Paste URL**:
 The link returned after a **Paste** is accepted. It includes a compact, unguessable **Paste Code**, and possessing the **Paste URL** is sufficient to read the **Paste**.
 _Avoid_: Download URL, permalink
+
+**Public Paste URL**:
+A **Paste URL** that can be opened from the public internet. Possession grants read access to the Paste, but the public endpoint does not grant Paste creation access.
+_Avoid_: Public Pastebin account, anonymous creation URL
 
 **Raw Paste URL**:
 A predictable URL variant for retrieving the **Raw Paste** without browser-oriented page chrome.
@@ -81,12 +85,16 @@ A **Paste URL** whose possession grants read access without a separate login, to
 _Avoid_: Authenticated link, shared login
 
 **Trusted Collaborator**:
-A person or automation context inside the work/team boundary that is allowed to create or read pastes according to the Pastebin's access rules.
+A person or automation context inside the work/team boundary that is allowed to create Pastes. A Trusted Collaborator may share a **Public Paste URL** with a reader outside that boundary.
 _Avoid_: Anonymous user, customer, public visitor
 
 **Trusted Network Boundary**:
-The network reachability boundary that limits who can create pastes. Anyone who can reach the Pastebin inside this boundary may create a **Paste**.
+The network reachability boundary that limits who can create Pastes. Anyone who can reach the private Pastebin endpoint inside this boundary may create a **Paste**.
 _Avoid_: Application login, user registry, public access
+
+**Public Read Boundary**:
+The internet-facing boundary that permits only Paste retrieval and service health checks. It never permits Paste creation, and it treats every Paste URL as a bearer secret that must not be indexed, cached, or sent as a referrer.
+_Avoid_: Public write endpoint, anonymous Paste form
 
 ## Example Dialogue
 

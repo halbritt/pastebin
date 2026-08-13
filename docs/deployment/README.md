@@ -1,8 +1,8 @@
 # Pastebin Deployment
 
-This deployment shape runs Pastebin on localhost and exposes it inside a
-trusted tailnet with Tailscale Serve. Do not enable Tailscale Funnel for this
-service.
+This deployment shape runs Pastebin on localhost and exposes creation inside a
+trusted tailnet with Tailscale Serve. Public Paste reads can use a separate
+Cloudflare hostname that reaches the same service through Tailscale Serve.
 
 ## Build On The Host
 
@@ -34,8 +34,10 @@ sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin.env.example
 sudo install -D -o root -g root -m 0644 docs/deployment/pastebin.service /etc/systemd/system/pastebin.service
 ```
 
-Edit `/etc/pastebin/pastebin.env` and keep `PASTEBIN_BASE_URL` set to the
-Tailscale HTTPS name for this node, for example `https://paste.example.ts.net`.
+For a private-only deployment, set `PASTEBIN_BASE_URL` to the Tailscale HTTPS
+name. For public reads, set it to the public hostname and set
+`PASTEBIN_PUBLIC_HOST` to that hostname. The CLI still submits through the
+Tailscale URL.
 
 ## Start Pastebin
 
@@ -67,8 +69,9 @@ Then check the tailnet URL from a tailnet-connected machine:
 curl -fsS https://paste.example.ts.net/healthz
 ```
 
-Keep the service private to the trusted tailnet. Do not run `tailscale funnel`
-for Pastebin.
+Keep the listener and creation surface private to the trusted tailnet. Do not
+run `tailscale funnel` for the custom public hostname. See
+[Public Read-Only Ingress](cloudflare-public-read.md).
 
 ## CLI Smoke Test
 
