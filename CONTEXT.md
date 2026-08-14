@@ -45,8 +45,12 @@ An immutable piece of plain text deliberately submitted to the **Public Pastebin
 _Avoid_: Public Paste, automatically shared Paste
 
 **Publisher**:
-A trusted person or automation context that deliberately submits a **Public Document** through the Public Pastebin's private publishing endpoint.
+A trusted person or automation context that deliberately submits a **Public Document** using a **Publishing Credential**.
 _Avoid_: Anonymous visitor, public creator
+
+**Publishing Credential**:
+A bearer secret that authorizes **Explicit Publication** through the Public Pastebin. It grants no access to private Pastes and is not a Public Document URL or Paste Code.
+_Avoid_: Paste Code, private-service credential, account password
 
 **Explicit Publication**:
 The deliberate act of submitting text to the **Public Pastebin**. It creates a new **Public Document** and never changes the visibility of an existing private **Paste**.
@@ -109,8 +113,12 @@ The network reachability boundary that limits who can create Pastes. Anyone who 
 _Avoid_: Application login, user registry, public access
 
 **Public Read Boundary**:
-The internet-facing boundary that permits retrieval only from the **Public Pastebin** collection. It never reaches private Pastes or permits **Explicit Publication**.
+The internet-facing boundary that permits retrieval only from the **Public Pastebin** collection without a credential. It never reaches private Pastes or permits anonymous **Explicit Publication**.
 _Avoid_: Public write endpoint, anonymous Paste form
+
+**Public Publishing Boundary**:
+The internet-facing creation boundary that accepts **Explicit Publication** only with a valid **Publishing Credential** and writes only to the Public Pastebin collection.
+_Avoid_: Anonymous creation, private Paste promotion
 
 ## Example Dialogue
 

@@ -6,7 +6,8 @@ Documents, but it must run with a separate process and database.
 
 The service has no application accounts. Anyone who can reach an instance's
 tailnet endpoint may create content in that instance. A configured public host
-has a read-only route set and cannot create content.
+may also accept creation with a dedicated publishing bearer token; requests
+without that token cannot create content.
 
 ## Build
 
@@ -53,11 +54,16 @@ Routes:
 | `GET` | `/raw/{code}` | Raw Paste text |
 | `GET` | `/healthz` | Health check |
 
-When `PASTEBIN_PUBLIC_HOST` is configured, that host serves only `GET /`,
-`GET /p/{code}`, `GET /raw/{code}`, and `GET /healthz`. Configure it only on a
-distinct Public Pastebin instance with its own database. The public home page
-explains that publication is private. Public responses disable shared caching,
+When `PASTEBIN_PUBLIC_HOST` is configured, that host serves `GET /`,
+`GET /p/{code}`, `GET /raw/{code}`, and `GET /healthz`. If
+`PASTEBIN_PUBLISH_TOKEN_FILE` is also configured, `POST /` requires that
+publishing bearer token. Configure both only on a distinct Public Pastebin
+instance with its own database. Public responses disable shared caching,
 referrer transmission, and search indexing.
+
+Without a configured publishing token, the public host returns `405` for
+`POST /`. With one configured, a missing or invalid bearer token returns `401`
+without reading the request body or calling storage.
 
 ## Browser Paste Rendering
 
@@ -91,7 +97,8 @@ interactive task state.
 | Variable | Default/example | Purpose |
 | --- | --- | --- |
 | `PASTEBIN_BASE_URL` | `https://paste.example.ts.net` | Base URL returned in Paste receipts |
-| `PASTEBIN_PUBLIC_HOST` | empty | Hostname that receives the read-only public route set |
+| `PASTEBIN_PUBLIC_HOST` | empty | Public Document hostname |
+| `PASTEBIN_PUBLISH_TOKEN_FILE` | empty | File containing the public publishing bearer token; requires `PASTEBIN_PUBLIC_HOST` |
 | `PASTEBIN_LISTEN` | `127.0.0.1:8080` | HTTP listen address |
 | `PASTEBIN_DB` | `/var/lib/pastebin/pastebin.db` | SQLite database path |
 | `PASTEBIN_MAX_BYTES` | `1048576` | Maximum Paste size in bytes |
@@ -108,19 +115,27 @@ SQLite database. Never point the public instance at the private database.
 ```sh
 PASTEBIN_BASE_URL=https://pastebin.example.com \
 PASTEBIN_PUBLIC_HOST=pastebin.example.com \
+PASTEBIN_PUBLISH_TOKEN_FILE=/etc/pastebin/public-publish-token \
 PASTEBIN_LISTEN=127.0.0.1:8081 \
 PASTEBIN_DB=/var/lib/pastebin-public/pastebin.db \
 bin/pastebind
 ```
 
-Publish a document explicitly through that instance's tailnet-only endpoint:
+Create a separate CLI config containing the public hostname and a local copy
+of the publishing token:
 
 ```sh
-bin/pastebin --server https://node.example.ts.net:18081 public-notes.md
+mkdir -p ~/.config/pastebin
+printf '%s\n' \
+  'server=https://pastebin.example.com' \
+  'publish_token_file=/path/to/public-publish-token' \
+  > ~/.config/pastebin/public
+PASTEBIN_CONFIG="$HOME/.config/pastebin/public" bin/pastebin public-notes.md
 ```
 
 The returned URL uses the public hostname. Existing private Pastes are not
-published, copied, or made reachable through that hostname.
+published, copied, or made reachable through that hostname. Keep the default
+CLI config pointed at the private service so public publication stays explicit.
 
 ## CLI Examples
 

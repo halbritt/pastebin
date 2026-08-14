@@ -31,6 +31,9 @@ sudo install -D -o root -g root -m 0755 bin/pastebin /usr/local/bin/pastebin
 Install configuration and the systemd unit:
 
 ```sh
+sudo install -d -o root -g pastebin -m 0750 /etc/pastebin
+sudo sh -c 'umask 027; openssl rand -hex 32 > /etc/pastebin/public-publish-token'
+sudo chown root:pastebin /etc/pastebin/public-publish-token
 sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin.env.example /etc/pastebin/pastebin.env
 sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin-public.env.example /etc/pastebin/pastebin-public.env
 sudo install -D -o root -g root -m 0644 docs/deployment/pastebin.service /etc/systemd/system/pastebin.service
@@ -38,8 +41,9 @@ sudo install -D -o root -g root -m 0644 docs/deployment/pastebin-public.service 
 ```
 
 Set the private instance's base URL to its Tailscale HTTPS endpoint. Set the
-public instance's base URL and public host to the public hostname. Do not reuse
-the private database path in the public environment file.
+public instance's base URL and public host to the public hostname. The public
+environment points at the generated publishing token. Do not reuse the private
+database path in the public environment file.
 
 ## Start Pastebin
 
@@ -74,9 +78,9 @@ curl -fsS https://paste.example.ts.net:18080/healthz
 curl -fsS https://paste.example.ts.net:18081/healthz
 ```
 
-Keep both listeners and both creation surfaces private to the trusted tailnet.
-Only the Public Pastebin's read host crosses Cloudflare. See [Public Read-Only
-Ingress](cloudflare-public-read.md).
+Keep both listeners private to the trusted tailnet. Cloudflare exposes Public
+Document reads and bearer-authenticated publication from the public instance.
+See [Public Document Ingress](cloudflare-public-read.md).
 
 ## CLI Smoke Test
 
@@ -86,8 +90,23 @@ printf 'server=https://paste.example.ts.net\n' > ~/.config/pastebin/config
 printf 'tailnet paste\n' | pastebin
 pastebin get abc234def567ghjk
 
-printf 'explicit public document\n' | \
-  pastebin --server https://paste.example.ts.net:18081
+sudo install -o "$(id -un)" -g "$(id -gn)" -m 0600 \
+  /etc/pastebin/public-publish-token ~/.config/pastebin/public-publish-token
+printf '%s\n' \
+  'server=https://pastebin.example.com' \
+  "publish_token_file=$HOME/.config/pastebin/public-publish-token" \
+  > ~/.config/pastebin/public
+PASTEBIN_CONFIG="$HOME/.config/pastebin/public" \
+  pastebin public-notes.md
 ```
 
 Replace `abc234def567ghjk` with the Paste Code returned by the create command.
+An unauthorized `POST` to the public hostname returns `401` and does not create
+a Public Document.
+
+## Rotate The Publishing Credential
+
+Generate a replacement token with the same restricted ownership and mode,
+restart `pastebin-public`, and then replace each Publisher's local token copy.
+The old credential stops working as soon as the service restarts. Public reads,
+private Pastes, and existing Public Documents do not depend on the credential.

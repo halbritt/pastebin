@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -53,6 +55,49 @@ func TestParseConfigUsesEnvironmentAndFlags(t *testing.T) {
 	}
 	if cfg.DBPath != "/tmp/pastebin.db" || cfg.MaxBytes != 64 || cfg.DefaultTTL != time.Hour || cfg.MaxTTL != 24*time.Hour {
 		t.Fatalf("config = %+v", cfg)
+	}
+}
+
+func TestParseConfigReadsPublishTokenFile(t *testing.T) {
+	tokenFile := filepath.Join(t.TempDir(), "publish-token")
+	publishToken := strings.Repeat("b", 64)
+	if err := os.WriteFile(tokenFile, []byte(publishToken+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PASTEBIN_PUBLIC_HOST", "pastebin.harm.org")
+	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", tokenFile)
+
+	cfg, err := parseConfig(nil)
+	if err != nil {
+		t.Fatalf("parseConfig() error = %v", err)
+	}
+	if cfg.PublishToken != publishToken {
+		t.Fatal("parseConfig() did not load the publishing token")
+	}
+}
+
+func TestParseConfigRejectsShortPublishToken(t *testing.T) {
+	tokenFile := filepath.Join(t.TempDir(), "publish-token")
+	if err := os.WriteFile(tokenFile, []byte("too-short\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PASTEBIN_PUBLIC_HOST", "pastebin.harm.org")
+	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", tokenFile)
+
+	if _, err := parseConfig(nil); err == nil || !strings.Contains(err.Error(), "at least 32") {
+		t.Fatalf("parseConfig() error = %v, want minimum token length error", err)
+	}
+}
+
+func TestParseConfigRejectsPublishTokenWithoutPublicHost(t *testing.T) {
+	tokenFile := filepath.Join(t.TempDir(), "publish-token")
+	if err := os.WriteFile(tokenFile, []byte(strings.Repeat("c", 64)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", tokenFile)
+
+	if _, err := parseConfig(nil); err == nil || !strings.Contains(err.Error(), "public host") {
+		t.Fatalf("parseConfig() error = %v, want public host error", err)
 	}
 }
 

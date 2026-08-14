@@ -14,6 +14,7 @@ import (
 
 	"pastebin/internal/client"
 	"pastebin/internal/paste"
+	"pastebin/internal/publishauth"
 )
 
 var version = "dev"
@@ -34,9 +35,12 @@ Options:
 Configuration:
   PASTEBIN_URL       Default service URL
   PASTEBIN_CONFIG    Config file path, default ~/.config/pastebin/config
+  PASTEBIN_PUBLISH_TOKEN_FILE
+                     Publishing bearer token file for create requests
 
 Config file format:
   server=https://paste.example.ts.net
+  publish_token_file=/path/to/publish-token
 `
 
 const getUsage = `Usage:
@@ -104,11 +108,11 @@ func runCreate(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 		}
 	}
 
-	serverURL, err := configuredServer(*server)
+	createConfig, err := configuredCreate(*server)
 	if err != nil {
 		return fail(stderr, "%v", err)
 	}
-	api, err := client.New(serverURL)
+	api, err := client.New(createConfig.Server)
 	if err != nil {
 		return fail(stderr, "%v", err)
 	}
@@ -121,6 +125,7 @@ func runCreate(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 		Content:      content,
 		Expires:      *expires,
 		JSONResponse: *jsonOut,
+		PublishToken: createConfig.PublishToken,
 	})
 	if err != nil {
 		return fail(stderr, "%v", err)
@@ -243,19 +248,64 @@ func configuredServer(flagValue string) (string, error) {
 	return "", client.ErrMissingBaseURL
 }
 
+type createCommandConfig struct {
+	Server       string
+	PublishToken string
+}
+
+func configuredCreate(flagValue string) (createCommandConfig, error) {
+	if server := strings.TrimSpace(flagValue); server != "" {
+		return createConfigForServer(server, strings.TrimSpace(os.Getenv("PASTEBIN_PUBLISH_TOKEN_FILE")))
+	}
+	if server := strings.TrimSpace(os.Getenv("PASTEBIN_URL")); server != "" {
+		return createConfigForServer(server, strings.TrimSpace(os.Getenv("PASTEBIN_PUBLISH_TOKEN_FILE")))
+	}
+
+	fileConfig, err := configuredFile()
+	if err != nil {
+		return createCommandConfig{}, err
+	}
+	if fileConfig.Server == "" {
+		return createCommandConfig{}, client.ErrMissingBaseURL
+	}
+	tokenFile := strings.TrimSpace(os.Getenv("PASTEBIN_PUBLISH_TOKEN_FILE"))
+	if tokenFile == "" {
+		tokenFile = fileConfig.PublishTokenFile
+	}
+	return createConfigForServer(fileConfig.Server, tokenFile)
+}
+
+func createConfigForServer(server, tokenFile string) (createCommandConfig, error) {
+	publishToken, err := publishauth.ReadTokenFile(tokenFile)
+	if err != nil {
+		return createCommandConfig{}, err
+	}
+	return createCommandConfig{Server: server, PublishToken: publishToken}, nil
+}
+
 func configuredServerFromFile() (string, error) {
+	config, err := configuredFile()
+	return config.Server, err
+}
+
+type fileConfig struct {
+	Server           string
+	PublishTokenFile string
+}
+
+func configuredFile() (fileConfig, error) {
 	path, err := configPath()
 	if err != nil {
-		return "", err
+		return fileConfig{}, err
 	}
 	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return "", nil
+		return fileConfig{}, nil
 	}
 	if err != nil {
-		return "", err
+		return fileConfig{}, err
 	}
-	return parseConfigServer(content), nil
+	return parseFileConfig(content), nil
 }
 
 func configPath() (string, error) {
@@ -269,21 +319,27 @@ func configPath() (string, error) {
 	return filepath.Join(configDir, "pastebin", "config"), nil
 }
 
-func parseConfigServer(content []byte) string {
+func parseFileConfig(content []byte) fileConfig {
+	var config fileConfig
 	for _, line := range strings.Split(string(content), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		if key, value, ok := strings.Cut(line, "="); ok {
-			if strings.TrimSpace(key) == "server" {
-				return strings.TrimSpace(value)
+			switch strings.TrimSpace(key) {
+			case "server":
+				config.Server = strings.TrimSpace(value)
+			case "publish_token_file":
+				config.PublishTokenFile = strings.TrimSpace(value)
 			}
 			continue
 		}
-		return line
+		if config.Server == "" {
+			config.Server = line
+		}
 	}
-	return ""
+	return config
 }
 
 func configuredServerForGet(flagValue, target string) (string, error) {

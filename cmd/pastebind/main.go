@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"pastebin/internal/paste"
+	"pastebin/internal/publishauth"
 	"pastebin/internal/server"
 	sqlitestore "pastebin/internal/storage/sqlite"
 )
@@ -42,12 +43,13 @@ func run(ctx context.Context, args []string) error {
 	defer store.Close()
 
 	handler, err := server.New(server.Config{
-		Store:      store,
-		BaseURL:    cfg.BaseURL,
-		PublicHost: cfg.PublicHost,
-		MaxBytes:   cfg.MaxBytes,
-		DefaultTTL: cfg.DefaultTTL,
-		MaxTTL:     cfg.MaxTTL,
+		Store:        store,
+		BaseURL:      cfg.BaseURL,
+		PublicHost:   cfg.PublicHost,
+		PublishToken: cfg.PublishToken,
+		MaxBytes:     cfg.MaxBytes,
+		DefaultTTL:   cfg.DefaultTTL,
+		MaxTTL:       cfg.MaxTTL,
 	})
 	if err != nil {
 		return err
@@ -85,13 +87,14 @@ func run(ctx context.Context, args []string) error {
 }
 
 type config struct {
-	BaseURL    string
-	PublicHost string
-	Listen     string
-	DBPath     string
-	MaxBytes   int64
-	DefaultTTL time.Duration
-	MaxTTL     time.Duration
+	BaseURL      string
+	PublicHost   string
+	PublishToken string
+	Listen       string
+	DBPath       string
+	MaxBytes     int64
+	DefaultTTL   time.Duration
+	MaxTTL       time.Duration
 }
 
 func parseConfig(args []string) (config, error) {
@@ -110,7 +113,8 @@ func parseConfig(args []string) (config, error) {
 	}
 
 	baseURL := flags.String("base-url", getenv("PASTEBIN_BASE_URL", "http://"+defaultListen), "base URL used in paste receipts")
-	publicHost := flags.String("public-host", getenv("PASTEBIN_PUBLIC_HOST", ""), "public read-only hostname")
+	publicHost := flags.String("public-host", getenv("PASTEBIN_PUBLIC_HOST", ""), "public document hostname")
+	publishTokenFile := flags.String("publish-token-file", getenv("PASTEBIN_PUBLISH_TOKEN_FILE", ""), "path to public publishing bearer token")
 	listen := flags.String("listen", getenv("PASTEBIN_LISTEN", defaultListen), "HTTP listen address")
 	dbPath := flags.String("db", getenv("PASTEBIN_DB", "pastebin.db"), "SQLite database path")
 	maxBytes := flags.Int64("max-bytes", envMaxBytes, "maximum paste size in bytes")
@@ -141,14 +145,22 @@ func parseConfig(args []string) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	publishToken, err := publishauth.ReadTokenFile(*publishTokenFile)
+	if err != nil {
+		return config{}, err
+	}
+	if publishToken != "" && normalizedPublicHost == "" {
+		return config{}, errors.New("publish token requires a public host")
+	}
 	return config{
-		BaseURL:    strings.TrimRight(strings.TrimSpace(*baseURL), "/"),
-		PublicHost: normalizedPublicHost,
-		Listen:     strings.TrimSpace(*listen),
-		DBPath:     strings.TrimSpace(*dbPath),
-		MaxBytes:   *maxBytes,
-		DefaultTTL: *defaultTTL,
-		MaxTTL:     *maxTTL,
+		BaseURL:      strings.TrimRight(strings.TrimSpace(*baseURL), "/"),
+		PublicHost:   normalizedPublicHost,
+		PublishToken: publishToken,
+		Listen:       strings.TrimSpace(*listen),
+		DBPath:       strings.TrimSpace(*dbPath),
+		MaxBytes:     *maxBytes,
+		DefaultTTL:   *defaultTTL,
+		MaxTTL:       *maxTTL,
 	}, nil
 }
 

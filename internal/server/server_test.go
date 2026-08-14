@@ -22,6 +22,15 @@ type recordingStore struct {
 	getFunc    func(string, time.Time) (paste.Paste, error)
 }
 
+type trackingReader struct {
+	read bool
+}
+
+func (r *trackingReader) Read([]byte) (int, error) {
+	r.read = true
+	return 0, errors.New("body must not be read")
+}
+
 func (s *recordingStore) Create(_ context.Context, req paste.CreateRequest) (paste.Paste, error) {
 	return s.createFunc(req)
 }
@@ -374,6 +383,118 @@ func TestPublicHostRejectsPasteCreation(t *testing.T) {
 	}
 }
 
+func TestNewRejectsInvalidPublishingConfiguration(t *testing.T) {
+	tests := []struct {
+		name         string
+		publicHost   string
+		publishToken string
+	}{
+		{name: "short token", publicHost: "pastebin.harm.org", publishToken: "too-short"},
+		{name: "missing public host", publishToken: strings.Repeat("a", 64)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := New(Config{
+				Store:        &recordingStore{},
+				PublicHost:   tt.publicHost,
+				PublishToken: tt.publishToken,
+			}); err == nil {
+				t.Fatal("New() error = nil, want invalid publishing configuration error")
+			}
+		})
+	}
+}
+
+func TestPublicHostRejectsMissingOrInvalidPublishToken(t *testing.T) {
+	tests := []struct {
+		name          string
+		authorization string
+	}{
+		{name: "missing", authorization: ""},
+		{name: "wrong bearer", authorization: "Bearer wrong"},
+		{name: "wrong scheme", authorization: "Basic credentials"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createCalled := false
+			body := &trackingReader{}
+			server, err := New(Config{
+				Store: &recordingStore{
+					createFunc: func(req paste.CreateRequest) (paste.Paste, error) {
+						createCalled = true
+						return paste.Paste{}, nil
+					},
+				},
+				PublicHost:   "pastebin.harm.org",
+				PublishToken: strings.Repeat("a", 64),
+			})
+			if err != nil {
+				t.Fatalf("create server: %v", err)
+			}
+			request := httptest.NewRequest(http.MethodPost, "https://pastebin.harm.org/", body)
+			request.Header.Set("Authorization", tt.authorization)
+			response := httptest.NewRecorder()
+
+			server.ServeHTTP(response, request)
+
+			if response.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
+			}
+			if got := response.Header().Get("WWW-Authenticate"); got != `Bearer realm="pastebin-public"` {
+				t.Fatalf("WWW-Authenticate = %q", got)
+			}
+			if createCalled {
+				t.Fatal("unauthorized public request reached document creation")
+			}
+			if body.read {
+				t.Fatal("unauthorized public request body was read")
+			}
+		})
+	}
+}
+
+func TestPublicHostCreatesDocumentWithPublishToken(t *testing.T) {
+	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	content := []byte("explicit public document")
+	createCalled := false
+	server, err := New(Config{
+		Store: &recordingStore{
+			createFunc: func(req paste.CreateRequest) (paste.Paste, error) {
+				createCalled = true
+				return paste.Paste{
+					Code:      "public123",
+					Content:   req.Content,
+					CreatedAt: testNow,
+					ExpiresAt: testNow.Add(time.Hour),
+					Size:      int64(len(req.Content)),
+				}, nil
+			},
+		},
+		BaseURL:      "https://pastebin.harm.org",
+		PublicHost:   "pastebin.harm.org",
+		PublishToken: publishToken,
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "https://pastebin.harm.org/", bytes.NewReader(content))
+	request.Header.Set("Authorization", "Bearer "+publishToken)
+	request.Header.Set("Accept", "application/json")
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	if response.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusCreated, response.Body.String())
+	}
+	if !createCalled {
+		t.Fatal("authorized public request did not reach document creation")
+	}
+	if !strings.Contains(response.Body.String(), `"url":"https://pastebin.harm.org/p/public123"`) {
+		t.Fatalf("publication receipt does not use public Document URL: %s", response.Body.String())
+	}
+}
+
 func TestPublishingHostCreatesDocumentWhenPublicHostIsConfigured(t *testing.T) {
 	content := []byte("explicit public document")
 	createCalled := false
@@ -433,8 +554,8 @@ func TestPublicHostShowsReadOnlyLandingPage(t *testing.T) {
 	if strings.Contains(body, `id="create-form"`) {
 		t.Fatalf("public landing page exposes Paste creation form: %s", body)
 	}
-	if !strings.Contains(body, "Document publication is available only inside the private tailnet.") {
-		t.Fatalf("public landing page does not explain read-only access: %s", body)
+	if !strings.Contains(body, "Trusted Publishers can submit documents with the Pastebin CLI") {
+		t.Fatalf("public landing page does not explain authenticated publication: %s", body)
 	}
 }
 

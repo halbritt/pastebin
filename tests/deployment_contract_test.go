@@ -28,6 +28,12 @@ func TestPASTEBIN3DeploymentKeepsPublicDocumentsInSeparateDatabase(t *testing.T)
 	if public["PASTEBIN_PUBLIC_HOST"] == "" {
 		t.Fatal("public deployment does not define PASTEBIN_PUBLIC_HOST")
 	}
+	if private["PASTEBIN_PUBLISH_TOKEN_FILE"] != "" {
+		t.Fatal("private deployment must not define PASTEBIN_PUBLISH_TOKEN_FILE")
+	}
+	if public["PASTEBIN_PUBLISH_TOKEN_FILE"] == "" {
+		t.Fatal("public deployment does not define PASTEBIN_PUBLISH_TOKEN_FILE")
+	}
 }
 
 func readEnvironmentFile(t *testing.T, path string) map[string]string {

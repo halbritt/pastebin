@@ -56,6 +56,28 @@ func TestCreatePlainPost(t *testing.T) {
 	}
 }
 
+func TestCreateSendsPublishToken(t *testing.T) {
+	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer "+publishToken {
+			t.Fatalf("Authorization = %q", got)
+		}
+		_, _ = io.WriteString(w, "https://pastebin.example.com/p/public1\n")
+	}))
+	defer server.Close()
+
+	api, err := New(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.Create(context.Background(), CreateOptions{
+		Content:      []byte("publish me"),
+		PublishToken: publishToken,
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCreateJSONRequestResponse(t *testing.T) {
 	expiresAt := time.Date(2026, 6, 27, 0, 0, 0, 0, time.UTC)
 	var server *httptest.Server

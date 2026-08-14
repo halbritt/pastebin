@@ -13,28 +13,31 @@ import (
 	"time"
 
 	"pastebin/internal/paste"
+	"pastebin/internal/publishauth"
 )
 
 type Config struct {
-	Store      paste.Store
-	BaseURL    string
-	PublicHost string
-	MaxBytes   int64
-	DefaultTTL time.Duration
-	MaxTTL     time.Duration
-	Now        func() time.Time
+	Store        paste.Store
+	BaseURL      string
+	PublicHost   string
+	PublishToken string
+	MaxBytes     int64
+	DefaultTTL   time.Duration
+	MaxTTL       time.Duration
+	Now          func() time.Time
 }
 
 type Server struct {
-	store      paste.Store
-	mux        *http.ServeMux
-	publicMux  *http.ServeMux
-	baseURL    string
-	publicHost string
-	maxBytes   int64
-	defaultTTL time.Duration
-	maxTTL     time.Duration
-	now        func() time.Time
+	store        paste.Store
+	mux          *http.ServeMux
+	publicMux    *http.ServeMux
+	baseURL      string
+	publicHost   string
+	publishToken string
+	maxBytes     int64
+	defaultTTL   time.Duration
+	maxTTL       time.Duration
+	now          func() time.Time
 }
 
 type Receipt struct {
@@ -49,14 +52,25 @@ func New(cfg Config) (*Server, error) {
 	if cfg.Store == nil {
 		return nil, errors.New("server requires a paste store")
 	}
+	publicHost := normalizeHost(cfg.PublicHost)
+	publishToken := strings.TrimSpace(cfg.PublishToken)
+	if publishToken != "" && publicHost == "" {
+		return nil, errors.New("publish token requires a public host")
+	}
+	if publishToken != "" {
+		if err := publishauth.ValidateToken(publishToken); err != nil {
+			return nil, err
+		}
+	}
 	srv := &Server{
-		store:      cfg.Store,
-		baseURL:    strings.TrimRight(cfg.BaseURL, "/"),
-		publicHost: normalizeHost(cfg.PublicHost),
-		maxBytes:   defaultMaxBytes(cfg.MaxBytes),
-		defaultTTL: defaultTTL(cfg.DefaultTTL),
-		maxTTL:     defaultMaxTTL(cfg.MaxTTL),
-		now:        defaultClock(cfg.Now),
+		store:        cfg.Store,
+		baseURL:      strings.TrimRight(cfg.BaseURL, "/"),
+		publicHost:   publicHost,
+		publishToken: publishToken,
+		maxBytes:     defaultMaxBytes(cfg.MaxBytes),
+		defaultTTL:   defaultTTL(cfg.DefaultTTL),
+		maxTTL:       defaultMaxTTL(cfg.MaxTTL),
+		now:          defaultClock(cfg.Now),
 	}
 	srv.mountRoutes()
 	return srv, nil
@@ -64,14 +78,14 @@ func New(cfg Config) (*Server, error) {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.publicHost != "" && normalizeHost(r.Host) == s.publicHost {
-		setPublicReadHeaders(w.Header())
+		setPublicHeaders(w.Header())
 		s.publicMux.ServeHTTP(w, r)
 		return
 	}
 	s.mux.ServeHTTP(w, r)
 }
 
-func setPublicReadHeaders(header http.Header) {
+func setPublicHeaders(header http.Header) {
 	header.Set("Cache-Control", "private, no-store")
 	header.Set("Referrer-Policy", "no-referrer")
 	header.Set("X-Robots-Tag", "noindex, nofollow, noarchive")
@@ -91,7 +105,23 @@ func (s *Server) mountRoutes() {
 	publicMux.HandleFunc("GET /p/{code}", s.pasteView)
 	publicMux.HandleFunc("GET /raw/{code}", s.rawPaste)
 	publicMux.HandleFunc("GET /healthz", s.health)
+	if s.publishToken != "" {
+		publicMux.HandleFunc("POST /{$}", s.publishDocument)
+	}
 	s.publicMux = publicMux
+}
+
+func (s *Server) publishDocument(w http.ResponseWriter, r *http.Request) {
+	if s.publisherAuthorized(r.Header.Get("Authorization")) {
+		s.createPaste(w, r)
+		return
+	}
+	w.Header().Set("WWW-Authenticate", `Bearer realm="pastebin-public"`)
+	s.writeError(w, r, http.StatusUnauthorized, "publishing authorization required")
+}
+
+func (s *Server) publisherAuthorized(authorization string) bool {
+	return publishauth.MatchesBearer(s.publishToken, authorization)
 }
 
 func (s *Server) publicHome(w http.ResponseWriter, _ *http.Request) {

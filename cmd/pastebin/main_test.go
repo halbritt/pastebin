@@ -117,6 +117,40 @@ func TestRunCreateFromFileUsesConfigServer(t *testing.T) {
 	}
 }
 
+func TestRunCreateUsesPublishTokenFromConfigFile(t *testing.T) {
+	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer "+publishToken {
+			t.Fatalf("Authorization = %q", got)
+		}
+		_, _ = io.WriteString(w, "https://pastebin.example.com/p/public1\n")
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	tokenFile := filepath.Join(dir, "publish-token")
+	configFile := filepath.Join(dir, "public-config")
+	if err := os.WriteFile(tokenFile, []byte(publishToken+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config := "server=" + server.URL + "\npublish_token_file=" + tokenFile + "\n"
+	if err := os.WriteFile(configFile, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PASTEBIN_URL", "")
+	t.Setenv("PASTEBIN_CONFIG", configFile)
+	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", "")
+
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), nil, bytes.NewBufferString("publish me"), &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
+	}
+	if got := stdout.String(); got != "https://pastebin.example.com/p/public1\n" {
+		t.Fatalf("stdout = %q", got)
+	}
+}
+
 func TestRunCreateFromStdinJSON(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

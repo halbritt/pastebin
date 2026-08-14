@@ -34,6 +34,7 @@ type CreateOptions struct {
 	Expires      string
 	JSONRequest  bool
 	JSONResponse bool
+	PublishToken string
 }
 
 type Receipt struct {
@@ -103,6 +104,9 @@ func (c *Client) Create(ctx context.Context, opts CreateOptions) (Receipt, error
 		return Receipt{}, err
 	}
 	req.Header.Set("Content-Type", contentType)
+	if opts.PublishToken != "" {
+		req.Header.Set("Authorization", "Bearer "+opts.PublishToken)
+	}
 	if opts.JSONResponse {
 		req.Header.Set("Accept", "application/json")
 	} else {
