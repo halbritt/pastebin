@@ -101,7 +101,7 @@ interactive task state.
 | `PASTEBIN_PUBLISH_TOKEN_FILE` | empty | File containing the public publishing bearer token; requires `PASTEBIN_PUBLIC_HOST` |
 | `PASTEBIN_LISTEN` | `127.0.0.1:8080` | HTTP listen address |
 | `PASTEBIN_DB` | `/var/lib/pastebin/pastebin.db` | SQLite database path |
-| `PASTEBIN_MAX_BYTES` | `1048576` | Maximum Paste size in bytes |
+| `PASTEBIN_MAX_BYTES` | `1048576` | Maximum Paste size in bytes; deployment examples set both services to `10485760` (10 MiB) |
 | `PASTEBIN_DEFAULT_TTL` | `168h` | Default expiration, equivalent to 7 days |
 | `PASTEBIN_MAX_TTL` | `720h` | Maximum expiration, equivalent to 30 days |
 
