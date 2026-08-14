@@ -130,12 +130,15 @@ printf '%s\n' \
   'server=https://pastebin.example.com' \
   'publish_token_file=/path/to/public-publish-token' \
   > ~/.config/pastebin/public
-PASTEBIN_CONFIG="$HOME/.config/pastebin/public" bin/pastebin public-notes.md
+bin/pastebin --public public-notes.md
 ```
 
 The returned URL uses the public hostname. Existing private Pastes are not
 published, copied, or made reachable through that hostname. Keep the default
 CLI config pointed at the private service so public publication stays explicit.
+The `--public` flag always loads `~/.config/pastebin/public`; private
+`PASTEBIN_URL`, `PASTEBIN_CONFIG`, and `PASTEBIN_PUBLISH_TOKEN_FILE` values do
+not override that profile.
 
 ## CLI Examples
 

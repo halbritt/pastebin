@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestRunHelp(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "root long", args: []string{"--help"}, want: "pastebin [--server URL]"},
+		{name: "root long", args: []string{"--help"}, want: "pastebin [--public] [--server URL]"},
 		{name: "root short", args: []string{"-h"}, want: "PASTEBIN_CONFIG"},
 		{name: "help command", args: []string{"help"}, want: "pastebin get"},
 		{name: "get long", args: []string{"get", "--help"}, want: "Retrieve a paste"},
@@ -148,6 +149,82 @@ func TestRunCreateUsesPublishTokenFromConfigFile(t *testing.T) {
 	}
 	if got := stdout.String(); got != "https://pastebin.example.com/p/public1\n" {
 		t.Fatalf("stdout = %q", got)
+	}
+}
+
+func TestRunCreatePublicUsesDedicatedProfile(t *testing.T) {
+	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	var privateCalled atomic.Bool
+	privateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		privateCalled.Store(true)
+		http.Error(w, "private service must not receive public documents", http.StatusInternalServerError)
+	}))
+	defer privateServer.Close()
+
+	publicServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer "+publishToken {
+			t.Errorf("Authorization = %q", got)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		if got := string(body); got != "publish me" {
+			t.Errorf("body = %q, want publish me", got)
+		}
+		_, _ = io.WriteString(w, "https://pastebin.example.com/p/public1\n")
+	}))
+	defer publicServer.Close()
+
+	configDir := t.TempDir()
+	pastebinConfigDir := filepath.Join(configDir, "pastebin")
+	if err := os.MkdirAll(pastebinConfigDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	tokenFile := filepath.Join(configDir, "public-publish-token")
+	if err := os.WriteFile(tokenFile, []byte(publishToken+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	privateConfig := filepath.Join(configDir, "private-config")
+	if err := os.WriteFile(privateConfig, []byte("server="+privateServer.URL+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	publicConfig := "server=" + publicServer.URL + "\npublish_token_file=" + tokenFile + "\n"
+	if err := os.WriteFile(filepath.Join(pastebinConfigDir, "public"), []byte(publicConfig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("PASTEBIN_URL", privateServer.URL)
+	t.Setenv("PASTEBIN_CONFIG", privateConfig)
+	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", filepath.Join(configDir, "wrong-token-file"))
+
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"--public"}, bytes.NewBufferString("publish me"), &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
+	}
+	if privateCalled.Load() {
+		t.Fatal("private service received the public document")
+	}
+	if got := stdout.String(); got != "https://pastebin.example.com/p/public1\n" {
+		t.Fatalf("stdout = %q", got)
+	}
+}
+
+func TestRunCreateRejectsPublicWithServerOverride(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run(
+		context.Background(),
+		[]string{"--public", "--server", "https://private.example.test"},
+		bytes.NewBufferString("publish me"),
+		&stdout,
+		&stderr,
+	)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1", code)
+	}
+	if got := stderr.String(); !bytes.Contains([]byte(got), []byte("--public cannot be combined with --server")) {
+		t.Fatalf("stderr = %q", got)
 	}
 }
 

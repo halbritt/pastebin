@@ -30,6 +30,7 @@ not share a database. The accepted product boundary is documented in
 - The CLI default server config lives at `~/.config/pastebin/config`.
 - The explicit public publishing config lives at
   `~/.config/pastebin/public` and must not replace the private default.
+- Publish an explicit Public Document with `pastebin --public [file]`.
 
 ## Git Discipline
 

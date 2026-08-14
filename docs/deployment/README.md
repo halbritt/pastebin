@@ -96,8 +96,7 @@ printf '%s\n' \
   'server=https://pastebin.example.com' \
   "publish_token_file=$HOME/.config/pastebin/public-publish-token" \
   > ~/.config/pastebin/public
-PASTEBIN_CONFIG="$HOME/.config/pastebin/public" \
-  pastebin public-notes.md
+pastebin --public public-notes.md
 ```
 
 Replace `abc234def567ghjk` with the Paste Code returned by the create command.

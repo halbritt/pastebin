@@ -20,7 +20,7 @@ import (
 var version = "dev"
 
 const rootUsage = `Usage:
-  pastebin [--server URL] [--expires 1h|1d|7d|30d] [--json] [file]
+  pastebin [--public] [--server URL] [--expires 1h|1d|7d|30d] [--json] [file]
   pastebin get [--server URL] [--raw] [--json] <url-or-code>
   pastebin version
 
@@ -28,6 +28,7 @@ Create a paste from a file or standard input. With no file argument, pastebin
 reads from stdin until EOF.
 
 Options:
+  --public           Publish using the dedicated public profile
   --server URL       Pastebin service URL for this command
   --expires TTL      Paste expiration: 1h, 1d, 7d, or 30d
   --json             Print a JSON receipt when creating a paste
@@ -41,6 +42,9 @@ Configuration:
 Config file format:
   server=https://paste.example.ts.net
   publish_token_file=/path/to/publish-token
+
+The --public flag loads ~/.config/pastebin/public and ignores private service
+and token overrides.
 `
 
 const getUsage = `Usage:
@@ -89,6 +93,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 
 func runCreate(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	flags := newFlagSet("pastebin")
+	public := flags.Bool("public", false, "publish using the dedicated public profile")
 	server := flags.String("server", "", "pastebin service URL")
 	expires := flags.String("expires", "", "paste expiration")
 	jsonOut := flags.Bool("json", false, "print JSON receipt")
@@ -102,13 +107,16 @@ func runCreate(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 	if flags.NArg() > 1 {
 		return fail(stderr, "create accepts at most one file")
 	}
+	if *public && strings.TrimSpace(*server) != "" {
+		return fail(stderr, "--public cannot be combined with --server")
+	}
 	if *expires != "" {
 		if _, err := paste.ParseAllowedTTL(*expires); err != nil {
 			return fail(stderr, "%v", err)
 		}
 	}
 
-	createConfig, err := configuredCreate(*server)
+	createConfig, err := configuredCreate(*server, *public)
 	if err != nil {
 		return fail(stderr, "%v", err)
 	}
@@ -253,7 +261,10 @@ type createCommandConfig struct {
 	PublishToken string
 }
 
-func configuredCreate(flagValue string) (createCommandConfig, error) {
+func configuredCreate(flagValue string, public bool) (createCommandConfig, error) {
+	if public {
+		return configuredPublicCreate()
+	}
 	if server := strings.TrimSpace(flagValue); server != "" {
 		return createConfigForServer(server, strings.TrimSpace(os.Getenv("PASTEBIN_PUBLISH_TOKEN_FILE")))
 	}
@@ -273,6 +284,25 @@ func configuredCreate(flagValue string) (createCommandConfig, error) {
 		tokenFile = fileConfig.PublishTokenFile
 	}
 	return createConfigForServer(fileConfig.Server, tokenFile)
+}
+
+func configuredPublicCreate() (createCommandConfig, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return createCommandConfig{}, fmt.Errorf("locate public publishing profile: %w", err)
+	}
+	path := filepath.Join(configDir, "pastebin", "public")
+	config, err := configuredFileAt(path)
+	if err != nil {
+		return createCommandConfig{}, fmt.Errorf("read public publishing profile: %w", err)
+	}
+	if config.Server == "" {
+		return createCommandConfig{}, fmt.Errorf("public publishing profile %q does not configure a server", path)
+	}
+	if config.PublishTokenFile == "" {
+		return createCommandConfig{}, fmt.Errorf("public publishing profile %q does not configure publish_token_file", path)
+	}
+	return createConfigForServer(config.Server, config.PublishTokenFile)
 }
 
 func createConfigForServer(server, tokenFile string) (createCommandConfig, error) {
@@ -298,6 +328,10 @@ func configuredFile() (fileConfig, error) {
 	if err != nil {
 		return fileConfig{}, err
 	}
+	return configuredFileAt(path)
+}
+
+func configuredFileAt(path string) (fileConfig, error) {
 	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return fileConfig{}, nil
