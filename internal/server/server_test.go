@@ -374,15 +374,15 @@ func TestPublicHostRejectsPasteCreation(t *testing.T) {
 	}
 }
 
-func TestPrivateHostStillCreatesPasteWhenPublicHostIsConfigured(t *testing.T) {
-	content := []byte("private write")
+func TestPublishingHostCreatesDocumentWhenPublicHostIsConfigured(t *testing.T) {
+	content := []byte("explicit public document")
 	createCalled := false
 	server, err := New(Config{
 		Store: &recordingStore{
 			createFunc: func(req paste.CreateRequest) (paste.Paste, error) {
 				createCalled = true
 				return paste.Paste{
-					Code:      "private123",
+					Code:      "public123",
 					Content:   req.Content,
 					CreatedAt: testNow,
 					ExpiresAt: testNow.Add(time.Hour),
@@ -396,7 +396,7 @@ func TestPrivateHostStillCreatesPasteWhenPublicHostIsConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create server: %v", err)
 	}
-	request := httptest.NewRequest(http.MethodPost, "https://proximal.tail0ecc2e.ts.net:18080/", bytes.NewReader(content))
+	request := httptest.NewRequest(http.MethodPost, "https://proximal.tail0ecc2e.ts.net:18081/", bytes.NewReader(content))
 	request.Header.Set("Accept", "application/json")
 	response := httptest.NewRecorder()
 
@@ -406,10 +406,10 @@ func TestPrivateHostStillCreatesPasteWhenPublicHostIsConfigured(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusCreated, response.Body.String())
 	}
 	if !createCalled {
-		t.Fatal("private request did not reach Paste creation")
+		t.Fatal("publishing request did not reach document creation")
 	}
-	if !strings.Contains(response.Body.String(), `"url":"https://pastebin.harm.org/p/private123"`) {
-		t.Fatalf("private creation receipt does not use public Paste URL: %s", response.Body.String())
+	if !strings.Contains(response.Body.String(), `"url":"https://pastebin.harm.org/p/public123"`) {
+		t.Fatalf("publication receipt does not use public Document URL: %s", response.Body.String())
 	}
 }
 
@@ -433,7 +433,7 @@ func TestPublicHostShowsReadOnlyLandingPage(t *testing.T) {
 	if strings.Contains(body, `id="create-form"`) {
 		t.Fatalf("public landing page exposes Paste creation form: %s", body)
 	}
-	if !strings.Contains(body, "Paste creation is available only inside the private tailnet.") {
+	if !strings.Contains(body, "Document publication is available only inside the private tailnet.") {
 		t.Fatalf("public landing page does not explain read-only access: %s", body)
 	}
 }

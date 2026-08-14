@@ -1,6 +1,6 @@
 # Pastebin
 
-Pastebin is a text-sharing context for moving plain text between machines, shells, and browsers by turning pasted content into a retrievable link. Paste creation stays inside a trusted network boundary; a Creator may choose to share the resulting bearer link outside that boundary.
+Pastebin is a text-sharing context for moving plain text between machines, shells, and browsers by turning pasted content into a retrievable link. Private Pastes and explicitly published Public Documents belong to separate collections; neither collection implicitly exposes or copies the other.
 
 ## Language
 
@@ -36,9 +36,25 @@ _Avoid_: Admin console, document editor
 The link returned after a **Paste** is accepted. It includes a compact, unguessable **Paste Code**, and possessing the **Paste URL** is sufficient to read the **Paste**.
 _Avoid_: Download URL, permalink
 
-**Public Paste URL**:
-A **Paste URL** that can be opened from the public internet. Possession grants read access to the Paste, but the public endpoint does not grant Paste creation access.
-_Avoid_: Public Pastebin account, anonymous creation URL
+**Public Pastebin**:
+A distinct service and collection containing only **Public Documents**. It shares rendering behavior with the private Pastebin but does not share stored records.
+_Avoid_: Public view of the private Pastebin, shared Paste database
+
+**Public Document**:
+An immutable piece of plain text deliberately submitted to the **Public Pastebin** for public reading. A **Public Document** is distinct from a private **Paste**, even when their text is identical.
+_Avoid_: Public Paste, automatically shared Paste
+
+**Publisher**:
+A trusted person or automation context that deliberately submits a **Public Document** through the Public Pastebin's private publishing endpoint.
+_Avoid_: Anonymous visitor, public creator
+
+**Explicit Publication**:
+The deliberate act of submitting text to the **Public Pastebin**. It creates a new **Public Document** and never changes the visibility of an existing private **Paste**.
+_Avoid_: Sharing, promotion, database copy
+
+**Public Document URL**:
+The public bearer link returned after **Explicit Publication**. Possession grants read access to that Public Document but no authority to publish another document.
+_Avoid_: Public Paste URL, anonymous creation URL
 
 **Raw Paste URL**:
 A predictable URL variant for retrieving the **Raw Paste** without browser-oriented page chrome.
@@ -85,7 +101,7 @@ A **Paste URL** whose possession grants read access without a separate login, to
 _Avoid_: Authenticated link, shared login
 
 **Trusted Collaborator**:
-A person or automation context inside the work/team boundary that is allowed to create Pastes. A Trusted Collaborator may share a **Public Paste URL** with a reader outside that boundary.
+A person or automation context inside the work/team boundary that is allowed to create private Pastes or act as a **Publisher**.
 _Avoid_: Anonymous user, customer, public visitor
 
 **Trusted Network Boundary**:
@@ -93,7 +109,7 @@ The network reachability boundary that limits who can create Pastes. Anyone who 
 _Avoid_: Application login, user registry, public access
 
 **Public Read Boundary**:
-The internet-facing boundary that permits only Paste retrieval and service health checks. It never permits Paste creation, and it treats every Paste URL as a bearer secret that must not be indexed, cached, or sent as a referrer.
+The internet-facing boundary that permits retrieval only from the **Public Pastebin** collection. It never reaches private Pastes or permits **Explicit Publication**.
 _Avoid_: Public write endpoint, anonymous Paste form
 
 ## Example Dialogue

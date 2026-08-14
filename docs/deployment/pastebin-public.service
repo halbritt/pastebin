@@ -1,0 +1,26 @@
+[Unit]
+Description=Public document Pastebin service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pastebin
+Group=pastebin
+EnvironmentFile=/etc/pastebin/pastebin-public.env
+WorkingDirectory=/var/lib/pastebin-public
+ExecStart=/usr/local/bin/pastebind
+Restart=on-failure
+RestartSec=2s
+StandardOutput=journal
+StandardError=journal
+StateDirectory=pastebin-public
+StateDirectoryMode=0750
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pastebin-public
+
+[Install]
+WantedBy=multi-user.target

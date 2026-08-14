@@ -1,8 +1,9 @@
 # Project Instructions
 
-Pastebin is a tailnet-only Paste creation service with public read-only bearer
-links. The accepted product boundary is documented in `CONTEXT.md` and
-`docs/adr/`.
+Pastebin provides a private tailnet Paste service and a distinct Public
+Pastebin collection for explicitly published documents. The two instances must
+not share a database. The accepted product boundary is documented in
+`CONTEXT.md` and `docs/adr/`.
 
 ## Development
 
@@ -18,8 +19,12 @@ links. The accepted product boundary is documented in `CONTEXT.md` and
 - The local user service is `pastebin.service`.
 - The service is exposed to the tailnet with Tailscale Serve.
 - The current tailnet URL is `https://proximal.tail0ecc2e.ts.net:18080/`.
-- Public Paste reads use `https://pastebin.harm.org/`; Paste creation must stay
-  on the tailnet URL.
+- The distinct public-document user service is `pastebin-public.service` and
+  uses its own database.
+- Explicit publication uses the tailnet URL
+  `https://proximal.tail0ecc2e.ts.net:18081/`.
+- Public Document reads use `https://pastebin.harm.org/`; public visitors must
+  not be able to publish.
 - The installed CLI lives at `~/.local/bin/pastebin`.
 - The CLI default server config lives at `~/.config/pastebin/config`.
 

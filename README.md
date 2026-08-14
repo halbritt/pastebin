@@ -1,12 +1,12 @@
 # Pastebin
 
-Pastebin turns plain text into a bearer Paste URL. Paste creation is available
-only inside the trusted tailnet; rendered and Raw Paste reads can be shared at
-the configured public read-only host.
+Pastebin turns plain text into a bearer Paste URL. The normal instance is a
+private tailnet service. A second instance may host explicitly published Public
+Documents, but it must run with a separate process and database.
 
-The service has no application accounts. Anyone who can reach the private
-endpoint may create a Paste, and anyone with a Paste URL may read that Paste.
-The public host has its own application route set and cannot create Pastes.
+The service has no application accounts. Anyone who can reach an instance's
+tailnet endpoint may create content in that instance. A configured public host
+has a read-only route set and cannot create content.
 
 ## Build
 
@@ -54,8 +54,9 @@ Routes:
 | `GET` | `/healthz` | Health check |
 
 When `PASTEBIN_PUBLIC_HOST` is configured, that host serves only `GET /`,
-`GET /p/{code}`, `GET /raw/{code}`, and `GET /healthz`. The public home page
-explains that creation is private. Public responses disable shared caching,
+`GET /p/{code}`, `GET /raw/{code}`, and `GET /healthz`. Configure it only on a
+distinct Public Pastebin instance with its own database. The public home page
+explains that publication is private. Public responses disable shared caching,
 referrer transmission, and search indexing.
 
 ## Browser Paste Rendering
@@ -89,7 +90,7 @@ interactive task state.
 
 | Variable | Default/example | Purpose |
 | --- | --- | --- |
-| `PASTEBIN_BASE_URL` | `https://pastebin.harm.org` | Base URL returned in Paste receipts |
+| `PASTEBIN_BASE_URL` | `https://paste.example.ts.net` | Base URL returned in Paste receipts |
 | `PASTEBIN_PUBLIC_HOST` | empty | Hostname that receives the read-only public route set |
 | `PASTEBIN_LISTEN` | `127.0.0.1:8080` | HTTP listen address |
 | `PASTEBIN_DB` | `/var/lib/pastebin/pastebin.db` | SQLite database path |
@@ -98,6 +99,28 @@ interactive task state.
 | `PASTEBIN_MAX_TTL` | `720h` | Maximum expiration, equivalent to 30 days |
 
 Allowed creation expirations are `1h`, `1d`, `7d`, and `30d`.
+
+## Explicit Public Documents
+
+Run the Public Pastebin as a second process with a dedicated listen port and
+SQLite database. Never point the public instance at the private database.
+
+```sh
+PASTEBIN_BASE_URL=https://pastebin.example.com \
+PASTEBIN_PUBLIC_HOST=pastebin.example.com \
+PASTEBIN_LISTEN=127.0.0.1:8081 \
+PASTEBIN_DB=/var/lib/pastebin-public/pastebin.db \
+bin/pastebind
+```
+
+Publish a document explicitly through that instance's tailnet-only endpoint:
+
+```sh
+bin/pastebin --server https://node.example.ts.net:18081 public-notes.md
+```
+
+The returned URL uses the public hostname. Existing private Pastes are not
+published, copied, or made reachable through that hostname.
 
 ## CLI Examples
 
@@ -159,8 +182,11 @@ Use the deployment artifacts in `docs/deployment/`:
 - `docs/deployment/README.md`
 - `docs/deployment/pastebin.env.example`
 - `docs/deployment/pastebin.service`
+- `docs/deployment/pastebin-public.env.example`
+- `docs/deployment/pastebin-public.service`
 - `docs/deployment/tailscale-serve.md`
 
-The documented production data path is `/var/lib/pastebin/pastebin.db`, the
+The documented data paths are `/var/lib/pastebin/pastebin.db` for private
+Pastes and `/var/lib/pastebin-public/pastebin.db` for Public Documents. The
 runtime user is `pastebin`, and service logs go to the systemd journal through
 stdout and stderr.
