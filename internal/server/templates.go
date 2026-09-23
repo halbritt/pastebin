@@ -30,6 +30,7 @@ type expiresOption struct {
 type homePageData struct {
 	pageAssets
 	Expires []expiresOption
+	Public  bool
 }
 
 type pastePageData struct {
@@ -54,7 +55,15 @@ func (s *Server) renderHome(w http.ResponseWriter) {
 }
 
 func (s *Server) renderPublicHome(w http.ResponseWriter) {
-	s.renderTemplate(w, "public_home.html", assets())
+	if s.publishToken == "" {
+		s.renderTemplate(w, "public_home.html", assets())
+		return
+	}
+	s.renderTemplate(w, "home.html", homePageData{
+		pageAssets: assets(),
+		Expires:    expiresOptions(),
+		Public:     true,
+	})
 }
 
 func (s *Server) renderPaste(w http.ResponseWriter, r *http.Request, found paste.Paste) {

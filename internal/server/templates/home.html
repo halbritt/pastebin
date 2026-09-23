@@ -11,12 +11,19 @@
   <main class="shell">
     <section class="workspace">
       <header class="topbar">
-        <h1>Pastebin</h1>
+        <h1>{{if .Public}}Publish a document{{else}}Pastebin{{end}}</h1>
       </header>
 
+      {{if .Public}}<p>Anyone with the link can read this document until it expires.</p>{{end}}
+
       <form id="create-form" class="paste-form" method="post" action="/">
-        <label class="field-label" for="content">Paste</label>
+        <label class="field-label" for="content">{{if .Public}}Markdown document{{else}}Paste{{end}}</label>
         <textarea id="content" name="content" spellcheck="false" required autofocus></textarea>
+
+        {{if .Public}}
+        <label class="field-label" for="publish-token">Publishing credential</label>
+        <input id="publish-token" type="password" autocomplete="off" required>
+        {{end}}
 
         <div class="controls">
           <label class="field-label" for="expires">Expires</label>
@@ -25,24 +32,24 @@
             <option value="{{.Value}}" {{if .Default}}selected{{end}}>{{.Label}}</option>
             {{end}}
           </select>
-          <button type="submit">Create</button>
+          <button type="submit">{{if .Public}}Publish{{else}}Create{{end}}</button>
         </div>
         <p id="create-error" class="error" role="alert" hidden></p>
       </form>
 
       <section id="receipt" class="receipt" aria-live="polite" hidden>
-        <h2>Created</h2>
+        <h2>{{if .Public}}Published{{else}}Created{{end}}</h2>
         <div class="url-row">
-          <label for="paste-url">Paste URL</label>
+          <label for="paste-url">{{if .Public}}Public Document URL{{else}}Paste URL{{end}}</label>
           <input id="paste-url" type="text" readonly>
           <button type="button" data-copy-input="paste-url">Copy</button>
         </div>
         <div class="url-row">
-          <label for="raw-url">Raw Paste URL</label>
+          <label for="raw-url">{{if .Public}}Raw Document URL{{else}}Raw Paste URL{{end}}</label>
           <input id="raw-url" type="text" readonly>
           <button type="button" data-copy-input="raw-url">Copy</button>
         </div>
-        <a id="view-link" class="open-link" href="">Open paste</a>
+        <a id="view-link" class="open-link" href="">{{if .Public}}Open document{{else}}Open paste{{end}}</a>
       </section>
     </section>
   </main>

@@ -48,7 +48,7 @@ Routes:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Web Paste form |
+| `GET` | `/` | Web Paste form; credentialed Public Document form on the public host |
 | `POST` | `/` | Create Paste |
 | `GET` | `/p/{code}` | Browser Paste view |
 | `GET` | `/raw/{code}` | Raw Paste text |
@@ -64,6 +64,14 @@ referrer transmission, and search indexing.
 Without a configured publishing token, the public host returns `405` for
 `POST /`. With one configured, a missing or invalid bearer token returns `401`
 without reading the request body or calling storage.
+
+The public home page shows a Markdown text box and a publishing credential
+field when `PASTEBIN_PUBLISH_TOKEN_FILE` is configured. A Publisher can paste
+Markdown, choose an expiration, enter the same credential used by the public
+CLI profile, and publish directly from the browser. The page sends the
+credential in the `Authorization` header; the application does not put it in
+the form body, URL, receipt, or browser storage. The public page remains read-only if no
+publishing token is configured.
 
 ## Browser Paste Rendering
 

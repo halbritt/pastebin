@@ -103,6 +103,12 @@ Replace `abc234def567ghjk` with the Paste Code returned by the create command.
 An unauthorized `POST` to the public hostname returns `401` and does not create
 a Public Document.
 
+To publish from a browser, open the public hostname, paste Markdown into the
+text box, and enter the publishing credential from the public CLI profile.
+The form keeps the credential only in the current page and sends it as a
+Bearer authorization header. Verify the returned Public Document URL and Raw
+Paste URL after deployment.
+
 ## Rotate The Publishing Credential
 
 Generate a replacement token with the same restricted ownership and mode,

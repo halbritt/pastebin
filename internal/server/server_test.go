@@ -559,6 +559,45 @@ func TestPublicHostShowsReadOnlyLandingPage(t *testing.T) {
 	}
 }
 
+func TestPublicHostShowsPublishingFormWhenConfigured(t *testing.T) {
+	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	server, err := New(Config{
+		Store:        &recordingStore{},
+		PublicHost:   "pastebin.harm.org",
+		PublishToken: publishToken,
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "https://pastebin.harm.org/", nil)
+	response := httptest.NewRecorder()
+
+	server.ServeHTTP(response, request)
+
+	body := response.Body.String()
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	for _, expected := range []string{
+		`id="create-form"`,
+		`name="content"`,
+		`id="publish-token" type="password" autocomplete="off" required`,
+		`Markdown document`,
+		`>Publish</button>`,
+		`headers.Authorization =`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Errorf("publishing page missing %q", expected)
+		}
+	}
+	if strings.Contains(body, publishToken) {
+		t.Fatal("publishing page leaked the server credential")
+	}
+	if !strings.Contains(response.Header().Get("Cache-Control"), "no-store") {
+		t.Fatal("publishing page must not be cached")
+	}
+}
+
 func TestPublicHostReadsPasteWithoutLeakingBearerURL(t *testing.T) {
 	content := []byte("public read")
 	server, err := New(Config{

@@ -16,7 +16,7 @@ function wireCreateForm() {
     try {
       const receipt = await createPaste(form);
       showReceipt(receipt);
-      form.reset();
+      form.querySelector("#content").value = "";
     } catch (error) {
       setCreateError(error.message);
     } finally {
@@ -27,12 +27,17 @@ function wireCreateForm() {
 
 async function createPaste(form) {
   const body = new URLSearchParams(new FormData(form));
+  const headers = {
+    "Accept": "application/json",
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  const publishToken = form.querySelector("#publish-token");
+  if (publishToken) {
+    headers.Authorization = `Bearer ${publishToken.value.trim()}`;
+  }
   const response = await fetch(form.action, {
     method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers,
     body,
   });
   if (!response.ok) {
