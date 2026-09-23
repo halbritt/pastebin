@@ -36,7 +36,26 @@ func ValidateToken(token string) error {
 			return nil
 		}
 	}
-	return errors.New("publish token must be 22 base64url characters or at least 32 characters")
+	words := strings.Split(token, "-")
+	if len(words) == 3 {
+		valid := true
+		for _, word := range words {
+			if len(word) < 3 || len(word) > 9 {
+				valid = false
+				break
+			}
+			for _, letter := range word {
+				if letter < 'a' || letter > 'z' {
+					valid = false
+					break
+				}
+			}
+		}
+		if valid {
+			return nil
+		}
+	}
+	return errors.New("publish token must be three lowercase words, 22 base64url characters, or at least 32 characters")
 }
 
 func MatchesBearer(token, authorization string) bool {

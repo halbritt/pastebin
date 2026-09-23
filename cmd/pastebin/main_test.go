@@ -119,7 +119,7 @@ func TestRunCreateFromFileUsesConfigServer(t *testing.T) {
 }
 
 func TestRunCreateUsesPublishTokenFromConfigFile(t *testing.T) {
-	const publishToken = "AQIDBAUGBwgJCgsMDQ4PEA"
+	const publishToken = "almanac-breeze-copper"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer "+publishToken {
 			t.Fatalf("Authorization = %q", got)

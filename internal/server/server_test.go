@@ -453,8 +453,56 @@ func TestPublicHostRejectsMissingOrInvalidPublishToken(t *testing.T) {
 	}
 }
 
+func TestPublicHostLimitsInvalidPublishAttempts(t *testing.T) {
+	const publishToken = "almanac-breeze-copper"
+	server, err := New(Config{
+		Store:        &recordingStore{},
+		PublicHost:   "pastebin.harm.org",
+		PublishToken: publishToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for attempt := 1; attempt <= 11; attempt++ {
+		request := httptest.NewRequest(http.MethodPost, "https://pastebin.harm.org/", nil)
+		request.Header.Set("Authorization", "Bearer wrong")
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, request)
+		want := http.StatusUnauthorized
+		if attempt == 11 {
+			want = http.StatusTooManyRequests
+		}
+		if response.Code != want {
+			t.Fatalf("attempt %d status = %d, want %d", attempt, response.Code, want)
+		}
+	}
+	request := httptest.NewRequest(http.MethodPost, "https://pastebin.harm.org/", nil)
+	request.Header.Set("Authorization", "Bearer "+publishToken)
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("valid credential status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+}
+
+func TestPublishFailureLimiterResetsAfterWindow(t *testing.T) {
+	var limiter publishFailureLimiter
+	now := time.Now()
+	for range 10 {
+		if !limiter.allow(now) {
+			t.Fatal("first ten attempts must be allowed")
+		}
+	}
+	if limiter.allow(now) {
+		t.Fatal("eleventh attempt must be limited")
+	}
+	if !limiter.allow(now.Add(time.Minute)) {
+		t.Fatal("attempt after window must be allowed")
+	}
+}
+
 func TestPublicHostCreatesDocumentWithPublishToken(t *testing.T) {
-	const publishToken = "AQIDBAUGBwgJCgsMDQ4PEA"
+	const publishToken = "almanac-breeze-copper"
 	content := []byte("explicit public document")
 	createCalled := false
 	server, err := New(Config{

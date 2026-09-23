@@ -32,8 +32,9 @@ Install configuration and the systemd unit:
 
 ```sh
 sudo install -d -o root -g pastebin -m 0750 /etc/pastebin
-sudo sh -c "umask 027; openssl rand -base64 16 | tr '+/' '-_' | tr -d '=\\n' > /etc/pastebin/public-publish-token"
-sudo chown root:pastebin /etc/pastebin/public-publish-token
+set -o pipefail
+python3 scripts/generate-publish-token.py |
+  sudo install -o root -g pastebin -m 0640 /dev/stdin /etc/pastebin/public-publish-token
 sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin.env.example /etc/pastebin/pastebin.env
 sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin-public.env.example /etc/pastebin/pastebin-public.env
 sudo install -D -o root -g root -m 0644 docs/deployment/pastebin.service /etc/systemd/system/pastebin.service
@@ -113,6 +114,9 @@ Paste URL after deployment.
 
 Generate a replacement token with the same restricted ownership and mode,
 restart `pastebin-public`, and then replace each Publisher's local token copy.
-The command above generates a 22-character credential from 16 random bytes.
+The command above selects three independent words from EFF's long wordlist.
+The public service limits failed publishing attempts across all clients to ten
+per minute; valid credentials remain usable when the limit is reached. Do not
+choose three words yourself or reuse a phrase from another service.
 The old credential stops working as soon as the service restarts. Public reads,
 private Pastes, and existing Public Documents do not depend on the credential.

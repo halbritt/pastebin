@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"pastebin/internal/paste"
@@ -28,16 +29,17 @@ type Config struct {
 }
 
 type Server struct {
-	store        paste.Store
-	mux          *http.ServeMux
-	publicMux    *http.ServeMux
-	baseURL      string
-	publicHost   string
-	publishToken string
-	maxBytes     int64
-	defaultTTL   time.Duration
-	maxTTL       time.Duration
-	now          func() time.Time
+	store           paste.Store
+	mux             *http.ServeMux
+	publicMux       *http.ServeMux
+	baseURL         string
+	publicHost      string
+	publishToken    string
+	publishFailures publishFailureLimiter
+	maxBytes        int64
+	defaultTTL      time.Duration
+	maxTTL          time.Duration
+	now             func() time.Time
 }
 
 type Receipt struct {
@@ -116,8 +118,32 @@ func (s *Server) publishDocument(w http.ResponseWriter, r *http.Request) {
 		s.createPaste(w, r)
 		return
 	}
+	if !s.publishFailures.allow(time.Now()) {
+		s.writeError(w, r, http.StatusTooManyRequests, "too many publishing attempts")
+		return
+	}
 	w.Header().Set("WWW-Authenticate", `Bearer realm="pastebin-public"`)
 	s.writeError(w, r, http.StatusUnauthorized, "publishing authorization required")
+}
+
+type publishFailureLimiter struct {
+	mu          sync.Mutex
+	windowStart time.Time
+	attempts    int
+}
+
+func (l *publishFailureLimiter) allow(now time.Time) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.windowStart.IsZero() || now.Sub(l.windowStart) >= time.Minute || now.Before(l.windowStart) {
+		l.windowStart = now
+		l.attempts = 0
+	}
+	if l.attempts >= 10 {
+		return false
+	}
+	l.attempts++
+	return true
 }
 
 func (s *Server) publisherAuthorized(authorization string) bool {
