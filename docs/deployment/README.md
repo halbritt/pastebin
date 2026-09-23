@@ -32,7 +32,7 @@ Install configuration and the systemd unit:
 
 ```sh
 sudo install -d -o root -g pastebin -m 0750 /etc/pastebin
-sudo sh -c 'umask 027; openssl rand -hex 32 > /etc/pastebin/public-publish-token'
+sudo sh -c "umask 027; openssl rand -base64 16 | tr '+/' '-_' | tr -d '=\\n' > /etc/pastebin/public-publish-token"
 sudo chown root:pastebin /etc/pastebin/public-publish-token
 sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin.env.example /etc/pastebin/pastebin.env
 sudo install -D -o root -g pastebin -m 0640 docs/deployment/pastebin-public.env.example /etc/pastebin/pastebin-public.env
@@ -113,5 +113,6 @@ Paste URL after deployment.
 
 Generate a replacement token with the same restricted ownership and mode,
 restart `pastebin-public`, and then replace each Publisher's local token copy.
+The command above generates a 22-character credential from 16 random bytes.
 The old credential stops working as soon as the service restarts. Public reads,
 private Pastes, and existing Public Documents do not depend on the credential.

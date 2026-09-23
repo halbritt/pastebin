@@ -3,6 +3,7 @@ package publishauth
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -26,10 +27,16 @@ func ReadTokenFile(path string) (string, error) {
 }
 
 func ValidateToken(token string) error {
-	if len(token) < 32 {
-		return errors.New("publish token must contain at least 32 characters")
+	if len(token) >= 32 {
+		return nil
 	}
-	return nil
+	if len(token) == 22 {
+		decoded, err := base64.RawURLEncoding.DecodeString(token)
+		if err == nil && len(decoded) == 16 {
+			return nil
+		}
+	}
+	return errors.New("publish token must be 22 base64url characters or at least 32 characters")
 }
 
 func MatchesBearer(token, authorization string) bool {

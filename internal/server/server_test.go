@@ -454,7 +454,7 @@ func TestPublicHostRejectsMissingOrInvalidPublishToken(t *testing.T) {
 }
 
 func TestPublicHostCreatesDocumentWithPublishToken(t *testing.T) {
-	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	const publishToken = "AQIDBAUGBwgJCgsMDQ4PEA"
 	content := []byte("explicit public document")
 	createCalled := false
 	server, err := New(Config{

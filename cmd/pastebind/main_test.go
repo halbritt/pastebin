@@ -60,7 +60,7 @@ func TestParseConfigUsesEnvironmentAndFlags(t *testing.T) {
 
 func TestParseConfigReadsPublishTokenFile(t *testing.T) {
 	tokenFile := filepath.Join(t.TempDir(), "publish-token")
-	publishToken := strings.Repeat("b", 64)
+	publishToken := "AQIDBAUGBwgJCgsMDQ4PEA"
 	if err := os.WriteFile(tokenFile, []byte(publishToken+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -84,8 +84,8 @@ func TestParseConfigRejectsShortPublishToken(t *testing.T) {
 	t.Setenv("PASTEBIN_PUBLIC_HOST", "pastebin.harm.org")
 	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", tokenFile)
 
-	if _, err := parseConfig(nil); err == nil || !strings.Contains(err.Error(), "at least 32") {
-		t.Fatalf("parseConfig() error = %v, want minimum token length error", err)
+	if _, err := parseConfig(nil); err == nil || !strings.Contains(err.Error(), "22 base64url characters") {
+		t.Fatalf("parseConfig() error = %v, want publish token format error", err)
 	}
 }
 
