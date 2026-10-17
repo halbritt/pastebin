@@ -543,7 +543,7 @@ func TestPublicHostCreatesDocumentWithPublishToken(t *testing.T) {
 	}
 }
 
-func TestPublishingHostCreatesDocumentWhenPublicHostIsConfigured(t *testing.T) {
+func TestPublishingHostCreatesDocumentWithoutPublishToken(t *testing.T) {
 	content := []byte("explicit public document")
 	createCalled := false
 	server, err := New(Config{
@@ -559,8 +559,9 @@ func TestPublishingHostCreatesDocumentWhenPublicHostIsConfigured(t *testing.T) {
 				}, nil
 			},
 		},
-		BaseURL:    "https://pastebin.harm.org",
-		PublicHost: "pastebin.harm.org",
+		BaseURL:      "https://pastebin.harm.org",
+		PublicHost:   "pastebin.harm.org",
+		PublishToken: strings.Repeat("a", 64),
 	})
 	if err != nil {
 		t.Fatalf("create server: %v", err)

@@ -5,9 +5,9 @@ private tailnet service. A second instance may host explicitly published Public
 Documents, but it must run with a separate process and database.
 
 The service has no application accounts. Anyone who can reach an instance's
-tailnet endpoint may create content in that instance. A configured public host
-may also accept creation with a dedicated publishing bearer token; requests
-without that token cannot create content.
+tailnet endpoint may create content in that instance without a token. A configured
+public host may also accept creation with a dedicated publishing bearer token;
+internet requests without that token cannot create content.
 
 ## Build
 
@@ -67,9 +67,9 @@ without reading the request body or calling storage.
 
 The public home page shows a Markdown text box and a publishing credential
 field when `PASTEBIN_PUBLISH_TOKEN_FILE` is configured. A Publisher can paste
-Markdown, choose an expiration, enter the same credential used by the public
-CLI profile, and publish directly from the browser. The page sends the
-credential in the `Authorization` header; the application does not put it in
+Markdown, choose an expiration, enter the publishing credential, and publish
+directly from the browser. The page sends the credential in the `Authorization`
+header; the application does not put it in
 the form body, URL, receipt, or browser storage. The public page remains read-only if no
 publishing token is configured.
 
@@ -129,14 +129,13 @@ PASTEBIN_DB=/var/lib/pastebin-public/pastebin.db \
 bin/pastebind
 ```
 
-Create a separate CLI config containing the public hostname and a local copy
-of the publishing token:
+Create a separate CLI config pointing to the Public Pastebin's tailnet endpoint.
+Publication through this trusted endpoint needs no token:
 
 ```sh
 mkdir -p ~/.config/pastebin
 printf '%s\n' \
-  'server=https://pastebin.example.com' \
-  'publish_token_file=/path/to/public-publish-token' \
+  'server=https://proximal.example.ts.net:18081' \
   > ~/.config/pastebin/public
 bin/pastebin --public public-notes.md
 ```
@@ -147,6 +146,12 @@ CLI config pointed at the private service so public publication stays explicit.
 The `--public` flag always loads `~/.config/pastebin/public`; private
 `PASTEBIN_URL`, `PASTEBIN_CONFIG`, and `PASTEBIN_PUBLISH_TOKEN_FILE` values do
 not override that profile.
+
+To publish from outside the tailnet, set the public profile's `server` to
+`https://pastebin.example.com` and add
+`publish_token_file=/path/to/public-publish-token`. This optional credential
+protects the internet write endpoint from anonymous disk-filling requests; it
+is not required for tailnet publication.
 
 ## CLI Examples
 

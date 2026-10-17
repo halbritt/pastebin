@@ -45,11 +45,11 @@ An immutable piece of plain text deliberately submitted to the **Public Pastebin
 _Avoid_: Public Paste, automatically shared Paste
 
 **Publisher**:
-A trusted person or automation context that deliberately submits a **Public Document** using a **Publishing Credential**.
+A trusted person or automation context that deliberately submits a **Public Document** through the tailnet, or through the public hostname using a **Publishing Credential**.
 _Avoid_: Anonymous visitor, public creator
 
 **Publishing Credential**:
-A bearer secret that authorizes **Explicit Publication** through the Public Pastebin. It grants no access to private Pastes and is not a Public Document URL or Paste Code.
+A bearer secret that authorizes **Explicit Publication** through the internet-facing Public Pastebin endpoint to prevent anonymous creation and disk exhaustion. Publication through the trusted tailnet endpoint needs no credential. It grants no access to private Pastes and is not a Public Document URL or Paste Code.
 _Avoid_: Paste Code, private-service credential, account password
 
 **Explicit Publication**:

@@ -37,14 +37,16 @@ Configuration:
   PASTEBIN_URL       Default service URL
   PASTEBIN_CONFIG    Config file path, default ~/.config/pastebin/config
   PASTEBIN_PUBLISH_TOKEN_FILE
-                     Publishing bearer token file for create requests
+                     Optional bearer token file for internet create requests
 
 Config file format:
   server=https://paste.example.ts.net
+  # Optional; omit on the tailnet:
   publish_token_file=/path/to/publish-token
 
 The --public flag loads ~/.config/pastebin/public and ignores private service
-and token overrides.
+and token overrides. Use the Public Pastebin's tailnet endpoint to publish
+without a token; receipts still contain public URLs.
 `
 
 const getUsage = `Usage:
@@ -298,9 +300,6 @@ func configuredPublicCreate() (createCommandConfig, error) {
 	}
 	if config.Server == "" {
 		return createCommandConfig{}, fmt.Errorf("public publishing profile %q does not configure a server", path)
-	}
-	if config.PublishTokenFile == "" {
-		return createCommandConfig{}, fmt.Errorf("public publishing profile %q does not configure publish_token_file", path)
 	}
 	return createConfigForServer(config.Server, config.PublishTokenFile)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -153,61 +154,72 @@ func TestRunCreateUsesPublishTokenFromConfigFile(t *testing.T) {
 }
 
 func TestRunCreatePublicUsesDedicatedProfile(t *testing.T) {
-	const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	var privateCalled atomic.Bool
-	privateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		privateCalled.Store(true)
-		http.Error(w, "private service must not receive public documents", http.StatusInternalServerError)
-	}))
-	defer privateServer.Close()
+	for _, withToken := range []bool{false, true} {
+		t.Run(fmt.Sprintf("withToken=%t", withToken), func(t *testing.T) {
+			const publishToken = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+			var privateCalled atomic.Bool
+			privateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				privateCalled.Store(true)
+				http.Error(w, "private service must not receive public documents", http.StatusInternalServerError)
+			}))
+			defer privateServer.Close()
 
-	publicServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("Authorization"); got != "Bearer "+publishToken {
-			t.Errorf("Authorization = %q", got)
-		}
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Error(err)
-		}
-		if got := string(body); got != "publish me" {
-			t.Errorf("body = %q, want publish me", got)
-		}
-		_, _ = io.WriteString(w, "https://pastebin.example.com/p/public1\n")
-	}))
-	defer publicServer.Close()
+			publicServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				wantAuthorization := ""
+				if withToken {
+					wantAuthorization = "Bearer " + publishToken
+				}
+				if got := r.Header.Get("Authorization"); got != wantAuthorization {
+					t.Errorf("Authorization = %q", got)
+				}
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Error(err)
+				}
+				if got := string(body); got != "publish me" {
+					t.Errorf("body = %q, want publish me", got)
+				}
+				_, _ = io.WriteString(w, "https://pastebin.example.com/p/public1\n")
+			}))
+			defer publicServer.Close()
 
-	configDir := t.TempDir()
-	pastebinConfigDir := filepath.Join(configDir, "pastebin")
-	if err := os.MkdirAll(pastebinConfigDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	tokenFile := filepath.Join(configDir, "public-publish-token")
-	if err := os.WriteFile(tokenFile, []byte(publishToken+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	privateConfig := filepath.Join(configDir, "private-config")
-	if err := os.WriteFile(privateConfig, []byte("server="+privateServer.URL+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	publicConfig := "server=" + publicServer.URL + "\npublish_token_file=" + tokenFile + "\n"
-	if err := os.WriteFile(filepath.Join(pastebinConfigDir, "public"), []byte(publicConfig), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("XDG_CONFIG_HOME", configDir)
-	t.Setenv("PASTEBIN_URL", privateServer.URL)
-	t.Setenv("PASTEBIN_CONFIG", privateConfig)
-	t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", filepath.Join(configDir, "wrong-token-file"))
+			configDir := t.TempDir()
+			pastebinConfigDir := filepath.Join(configDir, "pastebin")
+			if err := os.MkdirAll(pastebinConfigDir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			tokenFile := filepath.Join(configDir, "public-publish-token")
+			if err := os.WriteFile(tokenFile, []byte(publishToken+"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			privateConfig := filepath.Join(configDir, "private-config")
+			if err := os.WriteFile(privateConfig, []byte("server="+privateServer.URL+"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			publicConfig := "server=" + publicServer.URL + "\n"
+			if withToken {
+				publicConfig += "publish_token_file=" + tokenFile + "\n"
+			}
+			if err := os.WriteFile(filepath.Join(pastebinConfigDir, "public"), []byte(publicConfig), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("XDG_CONFIG_HOME", configDir)
+			t.Setenv("PASTEBIN_URL", privateServer.URL)
+			t.Setenv("PASTEBIN_CONFIG", privateConfig)
+			t.Setenv("PASTEBIN_PUBLISH_TOKEN_FILE", filepath.Join(configDir, "wrong-token-file"))
 
-	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"--public"}, bytes.NewBufferString("publish me"), &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
-	}
-	if privateCalled.Load() {
-		t.Fatal("private service received the public document")
-	}
-	if got := stdout.String(); got != "https://pastebin.example.com/p/public1\n" {
-		t.Fatalf("stdout = %q", got)
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), []string{"--public"}, bytes.NewBufferString("publish me"), &stdout, &stderr)
+			if code != 0 {
+				t.Fatalf("exit = %d, stderr = %q", code, stderr.String())
+			}
+			if privateCalled.Load() {
+				t.Fatal("private service received the public document")
+			}
+			if got := stdout.String(); got != "https://pastebin.example.com/p/public1\n" {
+				t.Fatalf("stdout = %q", got)
+			}
+		})
 	}
 }
 

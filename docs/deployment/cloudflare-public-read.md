@@ -21,8 +21,11 @@ PASTEBIN_DB=/var/lib/pastebin-public/pastebin.db
 ```
 
 Do not use the private Pastebin database path. Keep the CLI's default config on
-the private instance and use a separate config containing the public hostname
-and publishing token file for Explicit Publication.
+the private instance and point `~/.config/pastebin/public` at the Public
+Pastebin's tailnet endpoint, such as `https://node.example.ts.net:18081`.
+The CLI's `--public` flag uses that profile without a token and receives public
+hostname URLs. A publishing token file is needed in the CLI profile only when
+publishing through the internet-facing hostname from outside the tailnet.
 
 Add the hostname to the locally managed Cloudflare Tunnel. Use the Tailscale
 Serve HTTPS URL as the service so public traffic still crosses the Tailscale

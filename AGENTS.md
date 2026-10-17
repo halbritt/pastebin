@@ -21,11 +21,12 @@ not share a database. The accepted product boundary is documented in
 - The current tailnet URL is `https://proximal.tail0ecc2e.ts.net:18080/`.
 - The distinct public-document user service is `pastebin-public.service` and
   uses its own database.
-- Explicit publication uses `https://pastebin.harm.org/` with the dedicated
-  publishing credential. The service remains available at the tailnet URL
-  `https://proximal.tail0ecc2e.ts.net:18081/` for operations.
-- Public Document reads use `https://pastebin.harm.org/`; requests without the
-  publishing credential must not be able to create documents.
+- CLI publication uses the Public Pastebin's tailnet endpoint
+  `https://proximal.tail0ecc2e.ts.net:18081/` without a token and returns
+  `https://pastebin.harm.org/` links. A publishing credential is required only
+  for creation through the internet-facing hostname.
+- Public Document reads use `https://pastebin.harm.org/`; internet requests
+  without the publishing credential must not be able to create documents.
 - The installed CLI lives at `~/.local/bin/pastebin`.
 - The CLI default server config lives at `~/.config/pastebin/config`.
 - The explicit public publishing config lives at
